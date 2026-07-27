@@ -23,6 +23,7 @@
     --series-6:       #008300; /* green   — subscription payments */
     --series-7:       #4a3aa7; /* violet  — upfront/bond */
     --series-8:       #e34948; /* red     — card surcharge */
+    --series-9:       #a0522d; /* sienna  — novated lease (user quote) */
     --status-good:     #0ca30c;
     --status-warning:  #fab219;
     --status-serious:  #ec835a;
@@ -111,6 +112,38 @@
   .quick-durations button { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 6px; cursor: pointer; font-family: inherit; }
   .quick-durations button:hover, .quick-durations button.active { background: var(--accent-wash); color: var(--series-1); border-color: var(--series-1); }
 
+  /* ADDED 27 Jul 2026: collapsible controls — preserve */
+  /* Disable browser scroll-anchoring: without this, an unrelated text-length change elsewhere on the
+     page (e.g. the breakeven banner's wording) while the edit overlay is open can nudge window.scrollY
+     by a few px as the browser "helpfully" compensates for reflow above the fold. That reads as an
+     unwanted scroll jump once the collapsed layout lets scrollY reach that content. Turning anchoring
+     off keeps the scroll position exactly where the user left it, full stop. */
+  html, body { overflow-anchor: none; }
+  .controls-slim { display: none; align-items: center; justify-content: space-between; gap: 12px; height: 48px; }
+  .sticky-bar.collapsed .controls-slim { display: flex; }
+  .controls-slim .cs-summary { font-size: 13px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .controls-slim .cs-edit-btn {
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--series-1);
+    font-size: 12.5px; font-weight: 700; padding: 7px 14px; border-radius: 7px; cursor: pointer; font-family: inherit; flex: 0 0 auto;
+    transition: background 0.15s, color 0.15s;
+  }
+  .controls-slim .cs-edit-btn:hover { background: var(--accent-wash); }
+  .controls-slim .cs-edit-btn.active { background: var(--series-1); color: #fff; border-color: var(--series-1); }
+  #controlsFull { transition: opacity 0.18s ease, transform 0.18s ease; }
+  .sticky-bar.collapsed #controlsFull {
+    position: absolute; top: 100%; left: 0; right: 0;
+    max-width: 1180px; margin: 0 auto;
+    background: var(--surface-1); border: 1px solid var(--border); border-top: none;
+    border-radius: 0 0 14px 14px; box-shadow: 0 14px 30px rgba(0,0,0,0.16);
+    padding: 18px 20px 22px; max-height: 76vh; overflow-y: auto;
+    opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-8px);
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
+    z-index: 55;
+  }
+  .sticky-bar.collapsed.overlay-open #controlsFull {
+    opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
   /* assumptions panel */
   .assump-toggle-row { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
   .assump-toggle-btn {
@@ -245,6 +278,10 @@
   .callout-box { border: 1px solid var(--border); border-left: 4px solid var(--series-1); background: var(--accent-wash); border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
   .callout-box h4 { margin: 0 0 8px; font-size: 13px; }
   .callout-box ol, .callout-box ul { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.7; color: var(--text-secondary); }
+  .warn-box { border: 1px solid var(--border); border-left: 4px solid var(--status-serious); background: rgba(236,131,90,0.08); border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
+  .warn-box h4 { margin: 0 0 8px; font-size: 13px; color: #a12727; }
+  .warn-box p, .warn-box ul { margin: 0; padding-left: 0; font-size: 12.5px; line-height: 1.7; color: var(--text-secondary); }
+  .warn-box ul { padding-left: 18px; }
   .empty-state { border: 1.5px dashed var(--baseline); border-radius: 10px; padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13.5px; margin-top: 8px; }
   .empty-state strong { display:block; color: var(--text-primary); font-size: 14.5px; margin-bottom: 6px; }
 
@@ -360,6 +397,13 @@
        would otherwise dominate the viewport and make scrolling feel trapped. */
     .sticky-bar { position: static; box-shadow: none; }
     .wrap, .sticky-inner { padding-left: 14px; padding-right: 14px; }
+    /* ADDED 27 Jul 2026: collapsible controls are a desktop/tablet-sticky feature only —
+       force the full layout back on below the sticky breakpoint regardless of JS state. */
+    .sticky-bar.collapsed .controls-slim { display: none; }
+    .sticky-bar.collapsed #controlsFull {
+      position: static; opacity: 1; visibility: visible; pointer-events: auto;
+      transform: none; box-shadow: none; border: none; padding: 0; max-height: none; overflow: visible;
+    }
     header.page-header { padding: 14px 0 6px; }
     header.page-header h1 { font-size: 19px; margin: 0 0 4px; }
     .subhead { font-size: 12.5px; margin: 0 0 8px; }
@@ -407,6 +451,8 @@
 
 <div class="sticky-bar">
   <div class="sticky-inner">
+    <!-- ADDED 27 Jul 2026: collapsible controls — preserve -->
+    <div id="controlsFull">
     <header class="page-header">
       <h1 id="mainTitle" contenteditable="true" spellcheck="false" title="Click to edit">Melbourne Vehicle Decision — Buy vs Subscribe</h1>
       <p class="subhead" contenteditable="true" spellcheck="false" title="Click to edit">An exploration tool for Kevin's Melbourne relocation (arriving September 2026, ~3-year stay, US driver's license, no AU credit history or income, funded from US savings). Change the budget, the duration, or the assumptions below — everything on every tab recomputes live. Fuel and tolls are excluded from every scenario.</p>
@@ -473,7 +519,7 @@
       </div>
       <div class="assump-field">
         <label>Insurance / yr (A$)
-          <span class="info-dot">i<span class="tip">Default A$1,900/yr. Researched range A$1,400–2,800/yr depending on age, suburb and foreign-license loading.</span></span>
+          <span class="info-dot">i<span class="tip">Default A$2,100/yr. VIC comprehensive averages A$2,094/yr (ages 30–49) to A$2,940/yr (all ages), 2025. No insurer publishes US-license terms — call to confirm before relying on cover.</span></span>
         </label>
         <input type="number" id="ovInsurance" step="50">
       </div>
@@ -499,6 +545,14 @@
         <span class="fx-val" id="ovFxVal">1.43</span>
       </div>
     </div>
+    </div>
+    <!-- /ADDED 27 Jul 2026: end of full-controls wrapper -->
+
+    <!-- ADDED 27 Jul 2026: collapsible controls — preserve -->
+    <div id="controlsSlim" class="controls-slim">
+      <span class="cs-summary" id="controlsSlimSummary">—</span>
+      <button type="button" class="cs-edit-btn" id="slimEditBtn">⚙ Edit</button>
+    </div>
 
     <div class="tab-nav" id="tabNav">
       <button type="button" class="tab-btn active" data-tab="compare">① Compare</button>
@@ -506,6 +560,7 @@
       <button type="button" class="tab-btn" data-tab="brands">③ Brands 101</button>
       <button type="button" class="tab-btn" data-tab="subs">④ Subscriptions</button>
       <button type="button" class="tab-btn" data-tab="playbook">⑤ Playbook &amp; Risks</button>
+      <button type="button" class="tab-btn" data-tab="runningcosts">⑥ Running Costs</button>
     </div>
   </div>
 </div>
@@ -581,6 +636,31 @@
       </div>
     </section>
 
+    <!-- ADDED 26 Jul 2026: Running Costs + novated content. Weekly listings-refresh task: PRESERVE these sections; only listing data elsewhere should change. -->
+    <section class="card" id="novatedPanel">
+      <h2>A third option: novated lease (via employer)</h2>
+      <p class="card-note">No published $/mo example for a typical used-SUV novated lease was found in research — nothing below is a fabricated cost line. This is mechanics and eligibility only; get a real quote from your employer's provider.</p>
+
+      <h3>How it works</h3>
+      <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; margin:0 0 12px;">A novated lease is a 3-way deal between you, your employer, and a lease/finance provider: your employer has to offer it (ask HR/payroll), and lease payments — plus running costs, if you bundle them in — come out of your <strong>pre-tax</strong> salary via salary packaging, instead of paying for the car with after-tax dollars.</p>
+
+      <div class="warn-box">
+        <h4>482 visa holders: ask before assuming</h4>
+        <p>Individual novated-lease providers set their own eligibility rules for temporary-visa holders, and those policies aren't published anywhere. This is case-by-case — ask your employer's designated novated lease provider directly whether a 482 (Skills in Demand) visa qualifies before you plan around it.</p>
+      </div>
+
+      <h3>The EV angle</h3>
+      <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; margin:0 0 4px;">The EV FBT (fringe benefits tax) exemption is active in 2026: a battery-electric vehicle priced under the luxury car tax threshold of <span class="money" data-aud="91661"></span> is FBT-exempt (plug-in hybrids lost this exemption in April 2025) — which makes a novated EV lease unusually cheap on a pre-tax basis compared with an equivalent petrol car.</p>
+      <p style="font-size:12.5px; color:var(--text-muted); line-height:1.6; margin:0;">The May 2026 Budget proposed phasing this exemption down from 2027 — <strong>that's a proposal, not yet law.</strong> Don't lock in a multi-year decision assuming it survives unchanged.</p>
+
+      <div class="assump-field" style="max-width:280px; margin-top:16px;">
+        <label>Novated monthly quote (A$, optional)
+          <span class="info-dot">i<span class="tip">Leave blank to hide. If your employer's provider gives you a real quote, enter it here to draw a third line on the "Cumulative net cost" chart above — a straight-line total with no resale value modeled, since lease-end buyout terms vary by provider.</span></span>
+        </label>
+        <input type="number" id="ovNovatedMonthly" step="10" placeholder="e.g. 650">
+      </div>
+    </section>
+
   </div>
 
   <!-- ============ TAB 2: CARS & BUDGET TIERS ============ -->
@@ -649,6 +729,13 @@
           <li>No brand-new SUV exists under ~A$23k — cheapest new is the 2026 MG ZS Vibe at A$22,990 intro, then Chery Tiggo 4 Urban A$23,990 and Mahindra XUV 3XO A$23,990. Stretching to new costs only ~A$3,000–4,000 above the demo cars above, but buys a full warranty from zero km instead of ~4 years remaining.</li>
           <li>carsales "84 results"-style counts mix used, demo, and new-on-order stock — the real used count at any given price is much smaller.</li>
         </ol>
+      </div>
+
+      <!-- ADDED 26 Jul 2026: Running Costs + novated content. Weekly listings-refresh task: PRESERVE these sections; only listing data elsewhere should change. -->
+      <div class="callout-box">
+        <h4>Set up alerts</h4>
+        <p style="margin:0 0 10px; font-size:12.5px; color:var(--text-secondary); line-height:1.6;">This snapshot is a point-in-time capture — stock turns over in days, not weeks. Run a live search on carsales, then save it and turn on alerts (free account required) to get notified the moment new stock lists at your budget.</p>
+        <a class="search-link-btn" href="https://www.carsales.com.au/cars/used/" target="_blank" rel="noopener">Open carsales used search ↗</a>
       </div>
     </section>
   </div>
@@ -759,7 +846,7 @@
           <div class="tl-phase-name">Arrival — September 2026</div>
           <ul>
             <li>VIC allows driving on a US license for <strong>6 months</strong> after arrival — for a September landing, the conversion deadline is <strong>March 2027</strong>.</li>
-            <li>Convert to a VIC license — the US is a <strong>Recognised Country</strong>, so a test-free conversion is likely, but VIC-specific requirements are <strong>unconfirmed</strong> — check the VicRoads requirements checker.</li>
+            <li>Convert to a VIC license — the US is on VicRoads' <strong>recognised country list</strong>, so conversion needs <strong>no driving test</strong>, only an eyesight test. Cost A$119–353 depending on license term (3yr vs 10yr). See the Running Costs tab for detail.</li>
             <li>Bridge the gap with a Carbar subscription while license and insurance get sorted.</li>
           </ul>
         </div>
@@ -818,8 +905,144 @@
     </section>
 
     <footer class="sources">
-      <strong>Sources &amp; confidence.</strong> Researched July 2026 via Autotrader, CarsGuide, carsales (screenshot only — direct fetch was blocked), ANCAP, brand warranty pages, provider websites/T&amp;Cs, VicRoads, and the ATO/AUSTRAC. Resale values are modeled estimates, not appraisals. <strong>UNCONFIRMED</strong> throughout this tool: exact insurance premiums, the VIC license-conversion test exemption, GWM/Chery warranty-transfer wording, and Karmo's US-document policy — verify each live before relying on it. This tool is a planning aid, not financial advice.
+      <strong>Sources &amp; confidence.</strong> Researched July 2026 via Autotrader, CarsGuide, carsales (screenshot only — direct fetch was blocked), ANCAP, brand warranty pages, provider websites/T&amp;Cs, VicRoads, and the ATO/AUSTRAC. Resale values are modeled estimates, not appraisals. <strong>UNCONFIRMED</strong> throughout this tool: exact insurance premiums, GWM/Chery warranty-transfer wording, and Karmo's US-document policy — verify each live before relying on it. The VIC license-conversion test exemption is now verified (see Running Costs tab). This tool is a planning aid, not financial advice.
     </footer>
+  </div>
+
+  <!-- ADDED 26 Jul 2026: Running Costs + novated content. Weekly listings-refresh task: PRESERVE these sections; only listing data elsewhere should change. -->
+  <div class="tab-panel hidden" id="tab-runningcosts">
+
+    <div class="tile-row">
+      <div class="tile">
+        <div class="tile-label">Before tolls</div>
+        <div class="tile-value"><span class="money-range" data-low="453" data-high="578"></span></div>
+        <div class="tile-sub">per month — fuel, insurance, rego, servicing, roadside, amortized stamp duty</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">+ Light tolls</div>
+        <div class="tile-value"><span class="money-range" data-low="463" data-high="598"></span></div>
+        <div class="tile-sub">weekend-only driving</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">+ Commuter tolls</div>
+        <div class="tile-value"><span class="money-range" data-low="563" data-high="748"></span></div>
+        <div class="tile-sub">daily freeway commute</div>
+      </div>
+      <div class="tile rec">
+        <div class="tile-label">vs. a subscription</div>
+        <div class="tile-value"><span class="money" data-aud="1050"></span>/mo</div>
+        <div class="tile-sub">current subscription default (Subscriptions tab) — even commuter-toll ownership undercuts it</div>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>Monthly all-in ownership — a ~$20k used SUV</h2>
+      <p class="card-note">The honest comparison against a <span class="money" data-aud="1050"></span>/mo subscription. These are researched real-world ranges (July 2026), fixed — independent of the interactive Buy vs Subscribe model on the Compare tab, which uses your own editable assumptions instead.</p>
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Cost item</th><th class="num">Monthly</th></tr></thead>
+        <tbody>
+          <tr><td>Fuel</td><td class="num"><span class="money-range" data-low="141" data-high="176"></span></td></tr>
+          <tr><td>Insurance</td><td class="num"><span class="money-range" data-low="175" data-high="245"></span></td></tr>
+          <tr><td>Rego (incl. TAC/CTP)</td><td class="num"><span class="money" data-aud="80"></span></td></tr>
+          <tr><td>Servicing</td><td class="num"><span class="money-range" data-low="22" data-high="42"></span></td></tr>
+          <tr><td>Roadside assist</td><td class="num"><span class="money" data-aud="12"></span></td></tr>
+          <tr><td>Stamp duty (amortized over 3 yrs)</td><td class="num"><span class="money" data-aud="23"></span></td></tr>
+          <tr><td><strong>Subtotal before tolls</strong></td><td class="num"><strong><span class="money-range" data-low="453" data-high="578"></span></strong></td></tr>
+          <tr><td>+ Light tolls (weekend-only)</td><td class="num"><span class="money-range" data-low="10" data-high="20"></span></td></tr>
+          <tr><td>+ Commuter tolls (daily freeway)</td><td class="num"><span class="money-range" data-low="110" data-high="170"></span></td></tr>
+          <tr><td><strong>Total incl. light tolls</strong></td><td class="num"><strong><span class="money-range" data-low="463" data-high="598"></span></strong></td></tr>
+          <tr><td><strong>Total incl. commuter tolls</strong></td><td class="num"><strong><span class="money-range" data-low="563" data-high="748"></span></strong></td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Tolls</h2>
+      <p class="card-note">Melbourne's freeways are all tolled — CityLink (Transurban) and EastLink are the two you'll hit. Both need a Linkt account.</p>
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Toll road</th><th class="num">Cost</th></tr></thead>
+        <tbody>
+          <tr><td>CityLink — per trip</td><td class="num">A$2.09–3.33</td></tr>
+          <tr><td>CityLink — daily cap</td><td class="num">A$12.51</td></tr>
+          <tr><td>EastLink — daily cap</td><td class="num">A$7.77</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="warn-box">
+        <h4>Set up Linkt before your first freeway drive</h4>
+        <p>Linkt account setup is A$3.50 online — do it before you drive CityLink or EastLink even once. Without a tag/account, casual no-tag fees run A$0.37–0.55/trip, and an unpaid toll escalates: invoice fees of A$7.26–14.53, then a police infringement notice (amount unverified).</p>
+      </div>
+      <p class="card-note" style="margin-top:14px;">Modeled monthly toll spend (estimates, label as such): weekend-only driving ~<span class="money-range" data-low="10" data-high="20"></span>/mo; CityLink daily commuter ~<span class="money-range" data-low="110" data-high="130"></span>/mo; EastLink commuter ~<span class="money" data-aud="170"></span>/mo.</p>
+    </section>
+
+    <section class="card">
+      <h2>Insurance</h2>
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>VIC comprehensive, 2025</th><th class="num">Annual</th></tr></thead>
+        <tbody>
+          <tr><td>Average, ages 30–49</td><td class="num"><span class="money" data-aud="2094"></span></td></tr>
+          <tr><td>Average, all ages</td><td class="num"><span class="money" data-aud="2940"></span></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="card-note" style="margin-top:10px;">+8.29% YoY (canstar.com.au, 2025). Dashboard default assumption: <span class="money" data-aud="2100"></span>/yr — editable in "Adjust assumptions" above.</p>
+      <div class="warn-box">
+        <h4>No insurer publishes US-license terms</h4>
+        <p>Budget Direct, AAMI, RACV, Allianz and Youi don't publish coverage, loading, or no-claims-history-portability terms for a US license online. <strong>Call and confirm before relying on cover.</strong> CommBank explicitly states it covers recognized international licenses — a reasonable first call.</p>
+      </div>
+      <p class="card-note" style="margin-top:14px;">CTP is bundled into rego via the TAC charge — no separate purchase needed.</p>
+    </section>
+
+    <section class="card">
+      <h2>Fuel</h2>
+      <p class="card-note">Melbourne U91 average <strong>187.5c/L</strong> (26 Jul 2026) ≈ <strong>US$4.96/gallon</strong> at FX 0.6984 (fuelradar.com.au).</p>
+      <div class="callout-box">
+        <h4>Tip</h4>
+        <p style="margin:0; font-size:12.5px; color:var(--text-secondary); line-height:1.6;">Melbourne runs on a ~6-week fuel price cycle (accc.gov.au) — prices swing sharply within that window. Fill on the dip, not the peak.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Child restraints — a legal trap for arriving Americans</h2>
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Age</th><th>VIC requirement</th></tr></thead>
+        <tbody>
+          <tr><td>0–6 months</td><td>Rear-facing restraint</td></tr>
+          <tr><td>6 months–4 years</td><td>Rear-facing or forward-facing harness</td></tr>
+          <tr><td>4–7 years</td><td>Forward-facing harness or booster seat</td></tr>
+          <tr><td>7–16 years</td><td>Booster seat or adult seatbelt (whichever fits properly)</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="card-note" style="margin-top:10px;">Fine for non-compliance: ~<span class="money" data-aud="2091"></span> (transport.vic.gov.au).</p>
+      <div class="warn-box">
+        <h4>US car seats are illegal in Australia</h4>
+        <p>US-certified restraints (FMVSS 213) do <strong>not</strong> meet the Australian standard (AS/NZS 1754) and are illegal to use here (productsafety.gov.au, choice.com.au). Don't ship a US car seat — buy locally after arrival.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>License conversion — the good news</h2>
+      <p class="card-note">Previously unconfirmed in this tool; now verified July 2026.</p>
+      <div class="callout-box">
+        <h4>US license converts without a driving test</h4>
+        <ul>
+          <li>The USA is on VicRoads' <strong>recognised country list</strong> — conversion needs <strong>no driving test</strong>, only an eyesight test (a hazard perception test may be required case-by-case).</li>
+          <li><strong>6-month deadline</strong> from the start of VIC residency to convert.</li>
+          <li>Cost: <span class="money-range" data-low="119" data-high="353"></span> depending on the license term chosen (3-year vs 10-year).</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer class="sources">
+      <strong>Sources.</strong> Running-cost figures researched July 2026 via linkt.com.au, eastlink.com.au, canstar.com.au, tac.vic.gov.au, vicroads.vic.gov.au, fuelradar.com.au, accc.gov.au, carexpert.com.au, RACV, transport.vic.gov.au, productsafety.gov.au, choice.com.au, and the ATO. Monthly toll scenarios are estimates, labeled as such; the novated-lease content on the Compare tab is mechanics and eligibility only — no fabricated dollar figures. This tab is a planning aid, not financial or insurance advice.
+    </footer>
+
   </div>
 
 </div>
@@ -936,8 +1159,8 @@
   ];
 
   var INCLUSIONS = [
-    ['Comprehensive insurance', 'You arrange it — ~A$1,400–2,800/yr, foreign-license loading likely, US no-claims history NOT recognized', 'Included; damage excess A$1,000–5,000 by provider', 'partial', 'partial'],
-    ['Rego + TAC/CTP', '~A$975/yr', 'Included', 'partial', 'yes'],
+    ['Comprehensive insurance', 'You arrange it — ~A$2,094–2,940/yr (VIC comprehensive avg, 2025); no insurer publishes US-license terms, call to confirm; US no-claims history NOT recognized', 'Included; damage excess A$1,000–5,000 by provider', 'partial', 'partial'],
+    ['Rego + TAC/CTP', '~A$959/yr', 'Included', 'partial', 'yes'],
     ['Stamp duty (4.2%)', 'Once, ~A$700–900', 'None', 'partial', 'no'],
     ['Servicing / maintenance', '~A$284–450/yr capped-price', 'Included', 'partial', 'yes'],
     ['Tyres', 'Yours — pay when needed', 'Included', 'partial', 'yes'],
@@ -964,11 +1187,11 @@
     activeTab: 'compare',
     fxTouched: false,
     fxLive: { attempted: false, success: false, rate: null },
-    overrides: { purchase: null, resale36: null, insurance: null, service: null, rego: null, subMonthly: null, subUpfront: null, fx: null },
+    overrides: { purchase: null, resale36: null, insurance: null, service: null, rego: null, subMonthly: null, subUpfront: null, fx: null, novatedMonthly: null },
     filters: { brand: 'any', body: 'suv', maxPrice: null, maxKm: 'any', yearMin: 2023 }
   };
 
-  var DEFAULTS = { insurance: 1900, service: 1000, rego: 975, subMonthly: 1050, subUpfront: 500, fx: 1.43, surcharge: 0.017, haircut: 0.75 };
+  var DEFAULTS = { insurance: 2100, service: 1000, rego: 959, subMonthly: 1050, subUpfront: 500, fx: 1.43, surcharge: 0.017, haircut: 0.75 };
 
   function tier() {
     if (state.tierId === 'custom') {
@@ -1291,6 +1514,13 @@
       otherTiers.forEach(function (id) {
         allSeries.push({ key: 'buy-' + id, short: 'Buy — ' + tierName(id), color: 'var(--series-1)', points: buySeriesPoints(id), dashed: true, primary: false });
       });
+    }
+    // ADDED 26 Jul 2026: optional novated-lease line — only appears once the user types a real quote.
+    var novMonthly = state.overrides.novatedMonthly;
+    if (novMonthly != null && novMonthly > 0) {
+      var novPts = [];
+      for (var nt = 0; nt <= 48; nt++) novPts.push({ t: nt, cost: novMonthly * nt });
+      allSeries.push({ key: 'novated', short: 'Novated lease (your quote)', color: 'var(--series-9)', points: novPts, dashed: false, primary: true });
     }
     activeSeriesRef = allSeries;
 
@@ -1787,6 +2017,8 @@
     document.getElementById('ovSubUpfront').value = Math.round(subUpfront());
     document.getElementById('ovFx').value = FX();
     document.getElementById('ovFxVal').textContent = FX().toFixed(2);
+    var novEl = document.getElementById('ovNovatedMonthly');
+    if (novEl) novEl.value = state.overrides.novatedMonthly != null ? Math.round(state.overrides.novatedMonthly) : '';
   }
 
   function updateDynamicRiskSpans() {
@@ -1900,6 +2132,97 @@
     el.placeholder = 'blank = no cap (links use ' + Math.round(currentCapAud()).toLocaleString('en-US') + ')';
   }
 
+  // ============================================================
+  // ADDED 27 Jul 2026: COLLAPSIBLE STICKY CONTROLS — preserve
+  // Auto-collapses the header/controls/assumptions block into a slim summary bar once the
+  // user scrolls past it, so it stops dominating the viewport. Same DOM nodes throughout —
+  // #controlsFull is only ever repositioned via CSS classes, never cloned, so every existing
+  // id and event listener on its children keeps working unchanged.
+  // ============================================================
+  var controlsCollapsed = false;
+  var controlsOverlayOpen = false;
+  var COLLAPSE_AT = 150; // px scrolled — collapse once past this
+  var EXPAND_AT = 50;    // px scrolled — restore full layout once back under this (hysteresis gap avoids flicker)
+
+  function isStickyBreakpoint() {
+    return window.matchMedia('(min-width: 741px)').matches;
+  }
+
+  function fmtKUsd(usd) {
+    var k = Math.round((usd / 1000) * 10) / 10;
+    return 'US$' + k + 'k';
+  }
+
+  function updateControlsSummary() {
+    var el = document.getElementById('controlsSlimSummary');
+    if (!el) return;
+    var t = tier();
+    var budgetTxt = state.tierId === 'custom' ? fmtKUsd(state.customUsd || 12500) : fmtKUsd(t.usd);
+    el.innerHTML = '<strong>' + budgetTxt + '</strong> · ' + state.duration + ' mo · FX ' + FX().toFixed(2) + ' · ' + state.currency;
+  }
+
+  function setOverlayOpen(open) {
+    controlsOverlayOpen = !!open && controlsCollapsed;
+    var bar = document.querySelector('.sticky-bar');
+    if (bar) bar.classList.toggle('overlay-open', controlsOverlayOpen);
+    var btn = document.getElementById('slimEditBtn');
+    if (btn) {
+      btn.textContent = controlsOverlayOpen ? '✕ Close' : '⚙ Edit';
+      btn.classList.toggle('active', controlsOverlayOpen);
+      btn.setAttribute('aria-expanded', controlsOverlayOpen ? 'true' : 'false');
+    }
+  }
+
+  function setControlsCollapsed(collapsed) {
+    if (collapsed === controlsCollapsed) return; // no-op guard — avoids redundant reflow/thrash
+    controlsCollapsed = collapsed;
+    var bar = document.querySelector('.sticky-bar');
+    if (bar) bar.classList.toggle('collapsed', controlsCollapsed);
+    // Any transition into/out of the collapsed state starts with the edit overlay closed.
+    setOverlayOpen(false);
+  }
+
+  function evaluateScrollCollapse() {
+    if (!isStickyBreakpoint()) {
+      // Mobile: the sticky bar is position:static (see the ≤740px media query) — nothing to collapse.
+      if (controlsCollapsed) setControlsCollapsed(false);
+      return;
+    }
+    var y = window.scrollY || document.documentElement.scrollTop || 0;
+    if (!controlsCollapsed && y > COLLAPSE_AT) setControlsCollapsed(true);
+    else if (controlsCollapsed && y < EXPAND_AT) setControlsCollapsed(false);
+  }
+
+  var scrollTicking = false;
+  window.addEventListener('scroll', function () {
+    if (scrollTicking) return;
+    scrollTicking = true;
+    window.requestAnimationFrame(function () {
+      evaluateScrollCollapse();
+      scrollTicking = false;
+    });
+  }, { passive: true });
+
+  window.addEventListener('resize', function () {
+    evaluateScrollCollapse();
+  });
+
+  var slimEditBtnEl = document.getElementById('slimEditBtn');
+  if (slimEditBtnEl) {
+    slimEditBtnEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setOverlayOpen(!controlsOverlayOpen);
+    });
+  }
+
+  // click-outside closes the overlay dropdown without affecting the collapsed/expanded state
+  document.addEventListener('click', function (e) {
+    if (!controlsCollapsed || !controlsOverlayOpen) return;
+    var target = e.target;
+    var inOverlay = target.closest && (target.closest('#controlsFull') || target.closest('#slimEditBtn'));
+    if (!inOverlay) setOverlayOpen(false);
+  });
+
   function render() {
     document.getElementById('durationValue').textContent = state.duration + ' months (' + (state.duration / 12).toFixed(1) + ' yrs)';
     document.getElementById('gaugeTierLabel').textContent = tier().label;
@@ -1907,6 +2230,7 @@
     updateBudgetStrip();
     updateDynamicRiskSpans();
     updateRateBanner();
+    updateControlsSummary();
     updateMoneySpans();
     updateStatTiles();
     renderChart();
@@ -2048,6 +2372,7 @@
   bindNumberOverride('ovRego', 'rego');
   bindNumberOverride('ovSubMonthly', 'subMonthly');
   bindNumberOverride('ovSubUpfront', 'subUpfront');
+  bindNumberOverride('ovNovatedMonthly', 'novatedMonthly');
   document.getElementById('ovFx').addEventListener('input', function (e) {
     state.fxTouched = true;
     state.overrides.fx = parseFloat(e.target.value);
@@ -2057,7 +2382,7 @@
 
   // reset link
   document.getElementById('resetAssumpBtn').addEventListener('click', function () {
-    state.overrides = { purchase: null, resale36: null, insurance: null, service: null, rego: null, subMonthly: null, subUpfront: null, fx: null };
+    state.overrides = { purchase: null, resale36: null, insurance: null, service: null, rego: null, subMonthly: null, subUpfront: null, fx: null, novatedMonthly: null };
     render();
   });
 
@@ -2074,6 +2399,7 @@
   renderBrands();
   render();
   fetchLiveFx();
+  evaluateScrollCollapse();
 })();
 </script>
 </body>
