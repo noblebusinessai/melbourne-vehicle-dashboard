@@ -1,0 +1,2512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Melbourne Vehicle Decision — Buy vs Subscribe</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6; /* blue    — Buy / net depreciation */
+    --series-2:       #eb6834; /* orange  — Subscribe / stamp duty+fees */
+    --series-3:       #1baf7a; /* aqua    — insurance */
+    --series-4:       #eda100; /* yellow  — rego+TAC */
+    --series-5:       #e87ba4; /* magenta — servicing/tyres */
+    --series-6:       #008300; /* green   — subscription payments */
+    --series-7:       #4a3aa7; /* violet  — upfront/bond */
+    --series-8:       #e34948; /* red     — card surcharge */
+    --series-9:       #a0522d; /* sienna  — novated lease (user quote) */
+    --status-good:     #0ca30c;
+    --status-warning:  #fab219;
+    --status-serious:  #ec835a;
+    --status-critical: #d03b3b;
+    --success-text:   #006300;
+    --accent-wash:    #eef4fc;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { padding: 0 0 80px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+  /* ---------- sticky top bar ---------- */
+  .sticky-bar {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  }
+  .sticky-inner { max-width: 1180px; margin: 0 auto; padding: 12px 20px; }
+  header.page-header { padding: 22px 0 8px; }
+  header.page-header h1 { font-size: 24px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .subhead { color: var(--text-secondary); font-size: 13.5px; margin: 0 0 10px; max-width: 860px; line-height: 1.5; }
+  header.page-header h1[contenteditable="true"], .subhead[contenteditable="true"] {
+    cursor: text; border-radius: 6px; padding: 2px 4px; margin-left: -4px; transition: background 0.15s;
+  }
+  header.page-header h1[contenteditable="true"]:hover, .subhead[contenteditable="true"]:hover {
+    background: var(--accent-wash);
+  }
+  header.page-header h1[contenteditable="true"]:focus, .subhead[contenteditable="true"]:focus {
+    background: var(--accent-wash); outline: 2px solid var(--series-1); outline-offset: 1px;
+  }
+  .edit-caption { font-size: 11px; color: var(--text-muted); margin: -4px 0 10px; }
+  .edit-caption code { font-size: 10.5px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; }
+  .rate-banner {
+    display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+    background: var(--accent-wash); border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 14px; font-size: 12.5px; color: var(--text-secondary);
+  }
+  .rate-banner strong { color: var(--text-primary); font-weight: 700; }
+  .rate-banner .fx-note { color: var(--text-muted); }
+
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 20px 28px; align-items: flex-end;
+  }
+  .control-group { display: flex; flex-direction: column; gap: 6px; }
+  .control-group label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .currency-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .currency-toggle button {
+    border: none; background: var(--surface-1); color: var(--text-secondary);
+    font-size: 13px; font-weight: 600; padding: 7px 16px; cursor: pointer; font-family: inherit;
+  }
+  .currency-toggle button.active { background: var(--series-1); color: #fff; }
+  .currency-toggle button:not(.active):hover { background: var(--accent-wash); }
+
+  .gauge { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .gauge button {
+    border: none; border-right: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+    font-size: 12.5px; font-weight: 600; padding: 7px 14px; cursor: pointer; font-family: inherit; text-align: left;
+    display: flex; flex-direction: column; gap: 1px; min-width: 112px;
+  }
+  .gauge button:last-child { border-right: none; }
+  .gauge button .g-usd { font-size: 13px; font-weight: 700; }
+  .gauge button .g-aud { font-size: 11px; color: var(--text-muted); }
+  .gauge button.active { background: var(--series-1); }
+  .gauge button.active .g-usd, .gauge button.active .g-aud { color: #fff; }
+  .gauge button:not(.active):hover { background: var(--accent-wash); }
+  .gauge-tier-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; font-style: italic; }
+  .budget-strip-line { font-size: 12px; color: var(--text-muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .gauge-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .gauge-custom-row label { font-size: 11.5px; color: var(--text-secondary); font-weight: 600; }
+  .gauge-custom-row input[type="number"] { border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 12.5px; width: 100px; font-family: inherit; background: var(--surface-1); color: var(--text-primary); }
+
+  .duration-row { display: flex; align-items: center; gap: 12px; min-width: 260px; }
+  .duration-row input[type="range"] { flex: 1; accent-color: var(--series-1); height: 4px; }
+  .duration-value { font-size: 13.5px; font-weight: 700; min-width: 122px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .quick-durations { display: flex; gap: 6px; }
+  .quick-durations button { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 6px; cursor: pointer; font-family: inherit; }
+  .quick-durations button:hover, .quick-durations button.active { background: var(--accent-wash); color: var(--series-1); border-color: var(--series-1); }
+
+  /* ADDED 27 Jul 2026: collapsible controls — preserve */
+  /* Disable browser scroll-anchoring: without this, an unrelated text-length change elsewhere on the
+     page (e.g. the breakeven banner's wording) while the edit overlay is open can nudge window.scrollY
+     by a few px as the browser "helpfully" compensates for reflow above the fold. That reads as an
+     unwanted scroll jump once the collapsed layout lets scrollY reach that content. Turning anchoring
+     off keeps the scroll position exactly where the user left it, full stop. */
+  html, body { overflow-anchor: none; }
+  .controls-slim { display: none; align-items: center; justify-content: space-between; gap: 12px; height: 48px; }
+  .sticky-bar.collapsed .controls-slim { display: flex; }
+  .controls-slim .cs-summary { font-size: 13px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .controls-slim .cs-edit-btn {
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--series-1);
+    font-size: 12.5px; font-weight: 700; padding: 7px 14px; border-radius: 7px; cursor: pointer; font-family: inherit; flex: 0 0 auto;
+    transition: background 0.15s, color 0.15s;
+  }
+  .controls-slim .cs-edit-btn:hover { background: var(--accent-wash); }
+  .controls-slim .cs-edit-btn.active { background: var(--series-1); color: #fff; border-color: var(--series-1); }
+  #controlsFull { transition: opacity 0.18s ease, transform 0.18s ease; }
+  .sticky-bar.collapsed #controlsFull {
+    position: absolute; top: 100%; left: 0; right: 0;
+    max-width: 1180px; margin: 0 auto;
+    background: var(--surface-1); border: 1px solid var(--border); border-top: none;
+    border-radius: 0 0 14px 14px; box-shadow: 0 14px 30px rgba(0,0,0,0.16);
+    padding: 18px 20px 22px; max-height: 76vh; overflow-y: auto;
+    opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-8px);
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
+    z-index: 55;
+  }
+  .sticky-bar.collapsed.overlay-open #controlsFull {
+    opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  /* assumptions panel */
+  .assump-toggle-row { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+  .assump-toggle-btn {
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--series-1);
+    font-size: 12.5px; font-weight: 700; padding: 7px 14px; border-radius: 7px; cursor: pointer; font-family: inherit;
+  }
+  .assump-toggle-btn:hover { background: var(--accent-wash); }
+  .reset-link { font-size: 12px; color: var(--text-muted); background: none; border: none; text-decoration: underline; cursor: pointer; font-family: inherit; padding: 0; }
+  .reset-link:hover { color: var(--series-1); }
+  .assump-panel {
+    margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px;
+    background: var(--page-plane);
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 18px;
+  }
+  .assump-field { display: flex; flex-direction: column; gap: 4px; }
+  .assump-field label { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; }
+  .assump-field input[type="number"], .assump-field input[type="range"] { font-family: inherit; }
+  .assump-field input[type="number"] {
+    border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; width: 100%;
+    background: var(--surface-1); color: var(--text-primary);
+  }
+  .assump-field .fx-val { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .info-dot {
+    display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--border); color: var(--text-secondary); font-size: 10px; font-weight: 700; cursor: help; flex: 0 0 auto;
+    position: relative;
+  }
+  .info-dot .tip {
+    display: none; position: absolute; bottom: 20px; left: 0; width: 210px; background: var(--text-primary); color: #fff;
+    font-size: 11.5px; font-weight: 400; line-height: 1.5; padding: 8px 10px; border-radius: 7px; z-index: 20;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+  }
+  .info-dot:hover .tip { display: block; }
+
+  /* ---------- tab nav ---------- */
+  .tab-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 20px 0 18px; }
+  .tab-btn {
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+    font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 9px; cursor: pointer; font-family: inherit;
+  }
+  .tab-btn:hover { background: var(--accent-wash); }
+  .tab-btn.active { background: var(--series-1); color: #fff; border-color: var(--series-1); }
+  .tab-panel.hidden { display: none !important; }
+
+  /* stat tiles */
+  .tile-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .tile .tile-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+  .tile .tile-value { font-size: 25px; font-weight: 700; letter-spacing: -0.01em; }
+  .tile .tile-sub { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
+  .tile.rec { background: var(--accent-wash); border-color: rgba(42,120,214,0.25); }
+  .tile.rec .tile-value { font-size: 18px; color: var(--series-1); }
+  .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:1px; }
+
+  section.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px 24px; margin-bottom: 22px; }
+  section.card h2 { font-size: 16px; font-weight: 700; margin: 0 0 4px; }
+  section.card h3 { font-size: 14px; font-weight: 700; margin: 18px 0 8px; }
+  section.card .card-note { font-size: 12.5px; color: var(--text-muted); margin: 0 0 16px; line-height: 1.5; }
+
+  .chart-toolbar { display:flex; justify-content: space-between; align-items:center; margin-bottom: 4px; gap: 10px; flex-wrap: wrap; }
+  .toolbar-left { display:flex; gap: 14px; align-items:center; font-size: 12.5px; color: var(--text-secondary); }
+  .toolbar-left label { display:flex; align-items:center; gap: 6px; cursor: pointer; }
+  .ghost-btn { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 7px; cursor: pointer; font-family: inherit; }
+  .ghost-btn:hover { background: var(--accent-wash); color: var(--series-1); }
+  .chart-shell { position: relative; }
+  svg#costChart { width: 100%; height: auto; display: block; }
+  text.axis-label { font-size: 11px; fill: var(--text-muted); font-family: system-ui, sans-serif; }
+  text.end-label { font-size: 12px; fill: var(--text-secondary); font-family: system-ui, sans-serif; font-weight: 600; }
+  text.marker-label { font-size: 10.5px; fill: var(--text-secondary); font-family: system-ui, sans-serif; }
+  text.be-label { font-size: 10.5px; fill: var(--text-primary); font-weight: 700; font-family: system-ui, sans-serif; }
+
+  #chartTooltip {
+    position: absolute; display: none; pointer-events: none; background: var(--text-primary); color: #fff;
+    border-radius: 8px; padding: 9px 12px; font-size: 12.5px; min-width: 168px; z-index: 5; line-height: 1.6;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  }
+  #chartTooltip .tt-title { font-weight: 700; margin-bottom: 4px; font-size: 12px; color: #fff; }
+  #chartTooltip .tt-row { display: flex; align-items: center; gap: 7px; }
+  #chartTooltip .tt-key { width: 10px; height: 3px; border-radius: 2px; flex: 0 0 auto; }
+  #chartTooltip .tt-name { flex: 1; color: #ddd; }
+  #chartTooltip .tt-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .legend-row { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 10px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-swatch { width: 14px; height: 3px; border-radius: 2px; }
+  .legend-swatch.dashed { background: none; border-top: 2px dashed var(--series-1); height: 0; }
+
+  .breakeven-banner {
+    display: flex; align-items: center; gap: 10px; background: var(--accent-wash); border: 1px solid rgba(42,120,214,0.25);
+    border-radius: 10px; padding: 10px 16px; font-size: 13.5px; color: var(--text-primary); margin-bottom: 14px;
+  }
+  .breakeven-banner strong { color: var(--series-1); }
+
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+  table.data-table th, table.data-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--gridline); vertical-align: top; }
+  table.data-table th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
+  table.data-table td.num, table.data-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table tr:last-child td { border-bottom: none; }
+  .hidden { display: none !important; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll table.data-table { min-width: 480px; }
+
+  /* stacked horizontal bars */
+  .stack-wrap { display: flex; flex-direction: column; gap: 16px; margin-top: 6px; }
+  .stack-row { display: grid; grid-template-columns: 96px 1fr 92px; gap: 10px; align-items: center; }
+  .stack-row .stack-label { font-size: 13px; font-weight: 700; }
+  .stack-row .stack-total { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .stack-track { display: flex; height: 26px; border-radius: 5px; overflow: hidden; background: var(--gridline); gap: 2px; }
+  .stack-seg { height: 100%; position: relative; min-width: 3px; }
+  .stack-legend { display: flex; flex-wrap: wrap; gap: 12px 18px; margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
+  .stack-legend .legend-item .legend-swatch { width: 11px; height: 11px; border-radius: 3px; }
+
+  /* inclusions matrix */
+  .glyph-yes { color: var(--status-good); font-weight: 700; }
+  .glyph-no { color: var(--status-critical); font-weight: 700; }
+  .glyph-partial { color: #8a5a00; font-weight: 700; }
+
+  /* card grids */
+  .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 8px; }
+  #brandsGrid { grid-template-columns: repeat(2, 1fr); }
+  .car-card, .brand-card, .provider-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: var(--page-plane); }
+  .car-card .cc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+  .car-card .cc-title { font-size: 13.5px; font-weight: 700; line-height: 1.3; }
+  .car-card .cc-price { font-size: 16px; font-weight: 700; color: var(--series-1); margin: 4px 0 2px; }
+  .car-card .cc-meta { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+  .car-card .cc-warranty { font-size: 11.5px; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--gridline); line-height: 1.5; }
+  .badge { display:inline-block; font-size:10.5px; font-weight:700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+  .badge-fits { background: rgba(12,163,12,0.14); color: var(--success-text); }
+  .badge-stretch, .badge-over { background: rgba(250,178,25,0.20); color: #8a5a00; }
+  .badge-avoid { background: rgba(208,59,59,0.14); color: #a12727; }
+
+  .callout-box { border: 1px solid var(--border); border-left: 4px solid var(--series-1); background: var(--accent-wash); border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
+  .callout-box h4 { margin: 0 0 8px; font-size: 13px; }
+  .callout-box ol, .callout-box ul { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.7; color: var(--text-secondary); }
+  .warn-box { border: 1px solid var(--border); border-left: 4px solid var(--status-serious); background: rgba(236,131,90,0.08); border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
+  .warn-box h4 { margin: 0 0 8px; font-size: 13px; color: #a12727; }
+  .warn-box p, .warn-box ul { margin: 0; padding-left: 0; font-size: 12.5px; line-height: 1.7; color: var(--text-secondary); }
+  .warn-box ul { padding-left: 18px; }
+  .empty-state { border: 1.5px dashed var(--baseline); border-radius: 10px; padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13.5px; margin-top: 8px; }
+  .empty-state strong { display:block; color: var(--text-primary); font-size: 14.5px; margin-bottom: 6px; }
+
+  /* filter bar (cars tab) */
+  .filter-bar { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; padding: 14px 16px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; }
+  .filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 118px; }
+  .filter-field label { font-size: 10.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+  .filter-field select, .filter-field input[type="number"] {
+    border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 12.5px; font-family: inherit;
+    background: var(--surface-1); color: var(--text-primary);
+  }
+  .filter-match-line { font-size: 12.5px; color: var(--text-secondary); font-weight: 600; margin: 8px 0 4px; }
+  .search-links-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+  .search-link-btn {
+    display: inline-flex; align-items: center; border: 1px solid var(--border); background: var(--surface-1); color: var(--series-1);
+    font-size: 12px; font-weight: 600; padding: 6px 11px; border-radius: 7px; text-decoration: none; font-family: inherit;
+  }
+  .search-link-btn:hover { background: var(--accent-wash); }
+  .fb-note { font-size: 11.5px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5; }
+  .snapshot-badge { display: inline-block; font-size: 11px; font-weight: 700; color: var(--series-1); background: var(--accent-wash); border: 1px solid rgba(42,120,214,0.25); border-radius: 20px; padding: 2px 10px; }
+  .badge-verified { background: rgba(42,120,214,0.14); color: var(--series-1); }
+  /* ADDED 2 Sep 2026: freshness colouring for the snapshot badges — preserve */
+  .snapshot-badge.fresh-ok    { color: #1a7f4b; background: rgba(26,127,75,0.10); border-color: rgba(26,127,75,0.30); }
+  .snapshot-badge.fresh-warn  { color: #8a5a00; background: rgba(184,124,0,0.12);  border-color: rgba(184,124,0,0.35); }
+  .snapshot-badge.fresh-stale { color: #a32020; background: rgba(163,32,32,0.11);  border-color: rgba(163,32,32,0.38); }
+  /* ADDED 2 Sep 2026: manual collapse control — preserve */
+  .collapse-now-btn {
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+    font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 7px; cursor: pointer;
+    font-family: inherit; transition: background 0.15s, color 0.15s;
+  }
+  .collapse-now-btn:hover { background: var(--accent-wash); color: var(--series-1); }
+  .cs-actions { display: inline-flex; gap: 8px; flex: 0 0 auto; }
+  .deep-link-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--gridline); }
+  .deep-link { font-size: 11px; font-weight: 600; color: var(--series-1); text-decoration: none; }
+  .deep-link:hover { text-decoration: underline; }
+  .as-listed-chip { font-size: 10.5px; color: var(--text-muted); background: var(--page-plane); border: 1px solid var(--border); border-radius: 20px; padding: 2px 8px; }
+  .pointer-chip-row { margin: -10px 0 18px; }
+  .pointer-chip-row a { display: inline-block; font-size: 12px; font-weight: 600; color: var(--series-1); background: var(--accent-wash); border: 1px solid rgba(42,120,214,0.25); border-radius: 20px; padding: 6px 13px; text-decoration: none; }
+  .pointer-chip-row a:hover { text-decoration: underline; }
+
+  /* bundled value panel (subscriptions tab) */
+  .bundled-sum-row { font-size: 13.5px; font-weight: 700; margin-top: 6px; color: var(--text-primary); }
+  .bundled-punchline { font-size: 13.5px; color: var(--text-primary); background: var(--accent-wash); border: 1px solid rgba(42,120,214,0.25); border-radius: 10px; padding: 10px 14px; margin: 10px 0 16px; line-height: 1.5; }
+
+  /* brand cards */
+  .brand-card { display: flex; flex-direction: column; gap: 6px; }
+  .brand-card h3 { margin: 0; font-size: 15px; }
+  .brand-card .b-us { font-size: 12px; font-style: italic; color: var(--text-muted); margin-bottom: 4px; }
+  .brand-card dl { margin: 6px 0 0; font-size: 12.5px; }
+  .brand-card dt { font-weight: 700; color: var(--text-secondary); margin-top: 6px; }
+  .brand-card dd { margin: 2px 0 0; color: var(--text-secondary); line-height: 1.5; }
+  .familiar-strip { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 10px; }
+
+  /* subscription tab */
+  .market-banner { background: var(--accent-wash); border: 1px solid rgba(42,120,214,0.25); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--text-primary); margin-bottom: 18px; line-height: 1.55; }
+  .provider-grid { display: flex; flex-direction: column; gap: 14px; }
+  .provider-card { display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 16px 18px; }
+  .provider-rank { font-size: 22px; font-weight: 800; color: var(--text-muted); text-align: center; padding-top: 2px; }
+  .provider-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .provider-head h3 { margin: 0; font-size: 15px; }
+  .provider-body { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 20px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+  .provider-body .full { grid-column: 1 / -1; }
+  .provider-body b { color: var(--text-primary); }
+  .fit-best { background: rgba(12,163,12,0.14); color: var(--success-text); }
+  .fit-ok { background: rgba(250,178,25,0.20); color: #8a5a00; }
+  .fit-no { background: rgba(208,59,59,0.14); color: #a12727; }
+  .fit-badge { display:inline-block; font-size:11px; font-weight:700; padding: 3px 9px; border-radius: 20px; }
+  .vehicle-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .veh-chip { border: 1px solid var(--border); background: var(--surface-1); border-radius: 7px; padding: 6px 10px; font-size: 12px; display:flex; flex-direction:column; gap:2px; }
+  .veh-chip .veh-price { font-weight: 700; }
+  .veh-chip .veh-clear { font-size: 10.5px; font-weight: 700; }
+  .veh-chip .veh-clear.yes { color: var(--success-text); }
+  .veh-chip .veh-clear.no { color: #a12727; }
+
+  .not-viable-strip, .fallback-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
+  .nv-item, .fb-item { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--text-secondary); line-height: 1.5; background: var(--page-plane); }
+  .nv-item b, .fb-item b { color: var(--text-primary); display:block; margin-bottom: 3px; font-size: 12.5px; }
+
+  .docs-checklist { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 20px; margin-top: 8px; }
+  .docs-checklist div { font-size: 13px; color: var(--text-secondary); display: flex; gap: 8px; align-items: flex-start; }
+  .docs-checklist div::before { content: '☐'; color: var(--series-1); font-weight: 700; }
+
+  /* timeline / risk / callout (playbook) */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .tl-phase { display: grid; grid-template-columns: 150px 1fr; gap: 18px; padding: 14px 0; border-bottom: 1px solid var(--gridline); }
+  .tl-phase:last-child { border-bottom: none; }
+  .tl-phase-name { font-size: 13px; font-weight: 700; color: var(--series-1); padding-top: 2px; }
+  .tl-phase ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
+  .tl-phase li strong { color: var(--text-primary); }
+
+  .sev { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+  .sev-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; flex: 0 0 auto; }
+  .sev-warning .sev-dot { background: var(--status-warning); }
+  .sev-serious .sev-dot { background: var(--status-serious); }
+  .sev-critical .sev-dot { background: var(--status-critical); }
+  .sev-good .sev-dot { background: var(--status-good); }
+  .risk-side { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+
+  .callout { border: 1.5px solid var(--series-1); background: var(--accent-wash); border-radius: 12px; padding: 18px 20px; margin-bottom: 22px; }
+  .callout .callout-kicker { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--series-1); margin-bottom: 6px; }
+  .callout h2 { margin: 0 0 8px; font-size: 17px; }
+  .callout p { font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); margin: 0 0 8px; }
+  .callout .callout-steps { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  .callout .step-chip { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 12.5px; flex: 1 1 150px; }
+  .callout .step-chip b { display:block; font-size: 11px; color: var(--series-1); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 2px;}
+
+  footer.sources { font-size: 12px; color: var(--text-muted); line-height: 1.6; border-top: 1px solid var(--gridline); padding-top: 16px; margin-top: 8px; }
+  footer.sources strong { color: var(--text-secondary); }
+
+  @media (max-width: 980px) {
+    .tile-row { grid-template-columns: repeat(2,1fr); }
+    .assump-panel { grid-template-columns: repeat(2, 1fr); }
+    .card-grid { grid-template-columns: repeat(2, 1fr); }
+    .not-viable-strip, .fallback-row { grid-template-columns: repeat(2, 1fr); }
+    .familiar-strip { grid-template-columns: 1fr; }
+    .provider-body { grid-template-columns: 1fr; }
+    .docs-checklist { grid-template-columns: 1fr; }
+    .tl-phase { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 740px) {
+    body { padding-bottom: 60px; }
+    /* Mobile: nothing stays pinned — the whole page scrolls as one unit.
+       A sticky header this tall (title+subhead+rate banner+controls+tab bar)
+       would otherwise dominate the viewport and make scrolling feel trapped. */
+    .sticky-bar { position: static; box-shadow: none; }
+    .wrap, .sticky-inner { padding-left: 14px; padding-right: 14px; }
+    /* ADDED 27 Jul 2026: collapsible controls are a desktop/tablet-sticky feature only —
+       force the full layout back on below the sticky breakpoint regardless of JS state. */
+    .sticky-bar.collapsed .controls-slim { display: none; }
+    .sticky-bar.collapsed #controlsFull {
+      position: static; opacity: 1; visibility: visible; pointer-events: auto;
+      transform: none; box-shadow: none; border: none; padding: 0; max-height: none; overflow: visible;
+    }
+    header.page-header { padding: 14px 0 6px; }
+    header.page-header h1 { font-size: 19px; margin: 0 0 4px; }
+    .subhead { font-size: 12.5px; margin: 0 0 8px; }
+    .edit-caption { margin: -2px 0 8px; }
+    .rate-banner { padding: 8px 10px; font-size: 12px; gap: 6px 12px; }
+    .controls { flex-direction: column; align-items: stretch; gap: 12px; }
+    .control-group { width: 100%; }
+    .gauge { flex-wrap: wrap; width: 100%; }
+    .gauge button { flex: 1 1 45%; min-width: 0; padding: 6px 12px; }
+    .currency-toggle { width: 100%; display: flex; }
+    .currency-toggle button { flex: 1; padding: 6px 14px; }
+    .duration-row { flex-wrap: wrap; min-width: 0; }
+    .duration-row input[type="range"] { flex: 1 1 100%; }
+    .duration-value { width: 100%; text-align: left; }
+    .quick-durations { width: 100%; }
+    .quick-durations button { flex: 1; text-align: center; }
+    .assump-toggle-row { margin-top: 8px; }
+    .assump-panel { grid-template-columns: 1fr; }
+    .tab-nav { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 12px -14px 12px; padding: 0 14px 4px; }
+    .tab-btn { flex: 0 0 auto; white-space: nowrap; }
+    .tile-row { grid-template-columns: 1fr; }
+    .card-grid { grid-template-columns: 1fr; }
+    #brandsGrid { grid-template-columns: 1fr; }
+    section.card { padding: 16px 14px 20px; }
+    .not-viable-strip, .fallback-row { grid-template-columns: 1fr; }
+    .familiar-strip { grid-template-columns: 1fr; }
+    .provider-body { grid-template-columns: 1fr; }
+    .docs-checklist { grid-template-columns: 1fr; }
+    .tl-phase { grid-template-columns: 1fr; }
+    .filter-bar { flex-direction: column; align-items: stretch; }
+    .filter-field { width: 100%; min-width: 0; }
+    .stack-row { grid-template-columns: 1fr; row-gap: 4px; }
+    .stack-row .stack-total { text-align: left; }
+    body, .card-note, .provider-body, table.data-table th, table.data-table td,
+    .tl-phase ul, .fb-note, .callout p, .brand-card dd, .nv-item, .fb-item,
+    .bundled-punchline, .empty-state { font-size: 13px; }
+  }
+  @media (max-width: 640px) {
+    .card-grid { grid-template-columns: 1fr; }
+    .not-viable-strip, .fallback-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sticky-bar">
+  <div class="sticky-inner">
+    <!-- ADDED 27 Jul 2026: collapsible controls — preserve -->
+    <div id="controlsFull">
+    <header class="page-header">
+      <h1 id="mainTitle" contenteditable="true" spellcheck="false" title="Click to edit">Melbourne Vehicle Decision — Buy vs Subscribe</h1>
+      <p class="subhead" contenteditable="true" spellcheck="false" title="Click to edit">An exploration tool for Kevin's Melbourne relocation (arriving September 2026, ~3-year stay, US driver's license, no AU credit history or income, funded from US savings). Change the budget, the duration, or the assumptions below — everything on every tab recomputes live. Fuel and tolls are excluded from every scenario.</p>
+      <p class="edit-caption">Edits live only in this tab — add <code>#title=Your%20Title</code> to the URL to share a renamed copy.</p>
+      <div class="rate-banner">
+        <span id="planningRateSpan"><strong>Planning rate: 1 USD = 1.43 AUD</strong> (1 AUD ≈ US$0.70)</span>
+        <span class="fx-note">Override the FX rate in "Adjust assumptions" below (range 1.30–1.60)</span>
+        <span class="fx-note">±5% FX sensitivity — a move in the rate shifts every US$ figure here by roughly that much</span>
+        <span class="fx-note" id="fxLiveNote"></span>
+        <span class="snapshot-badge" id="snapshotBadgeHeader">Listings snapshot: 31 Aug 2026</span>
+        <!-- ADDED 2 Sep 2026: manual collapse — preserve -->
+        <button type="button" class="collapse-now-btn" id="collapseNowBtn" title="Keep the header out of the way while you read">⌃ Collapse header</button>
+      </div>
+    </header>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>Currency</label>
+        <div class="currency-toggle" id="currencyToggle">
+          <button type="button" data-cur="AUD" class="active">AUD</button>
+          <button type="button" data-cur="USD">USD</button>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Budget tier</label>
+        <div class="gauge" id="budgetGauge">
+          <button type="button" data-tier="t10"><span class="g-usd">US$10,000</span><span class="g-aud" id="gaugeAud_t10">A$14,300</span></button>
+          <button type="button" data-tier="t12_5" class="active"><span class="g-usd">US$12,500</span><span class="g-aud" id="gaugeAud_t12_5">A$17,875</span></button>
+          <button type="button" data-tier="t15"><span class="g-usd">US$15,000</span><span class="g-aud" id="gaugeAud_t15">A$21,450</span></button>
+          <button type="button" data-tier="custom" id="customTierBtn"><span class="g-usd">Custom</span><span class="g-aud" id="customAudPreview">set below</span></button>
+        </div>
+        <div class="gauge-custom-row hidden" id="gaugeCustomRow">
+          <label for="customUsdInput">Custom budget, US$</label>
+          <input type="number" id="customUsdInput" min="3000" max="60000" step="100" value="12500">
+        </div>
+        <div class="gauge-tier-label" id="gaugeTierLabel">2023 MG ZS Excite territory (32–60k km)</div>
+        <div class="budget-strip-line" id="budgetStripLine">US$12,500 → AU$17,875 at rate 1.43</div>
+      </div>
+      <div class="control-group">
+        <label for="durationSlider">Stay duration</label>
+        <div class="duration-row">
+          <input type="range" id="durationSlider" min="6" max="48" step="1" value="36">
+          <span class="duration-value" id="durationValue">36 months (3.0 yrs)</span>
+        </div>
+        <div class="quick-durations" id="quickDurations">
+          <button type="button" data-t="8">8mo</button>
+          <button type="button" data-t="12">12mo</button>
+          <button type="button" data-t="36" class="active">36mo</button>
+          <button type="button" data-t="48">48mo</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="assump-toggle-row">
+      <button type="button" class="assump-toggle-btn" id="assumpToggleBtn">Adjust assumptions ▾</button>
+      <button type="button" class="reset-link" id="resetAssumpBtn">reset to researched defaults</button>
+    </div>
+    <div class="assump-panel hidden" id="assumpPanel">
+      <div class="assump-field">
+        <label>Purchase price (A$)</label>
+        <input type="number" id="ovPurchase" step="100">
+      </div>
+      <div class="assump-field">
+        <label>36-mo resale (A$)</label>
+        <input type="number" id="ovResale" step="100">
+      </div>
+      <div class="assump-field">
+        <label>Insurance / yr (A$)
+          <span class="info-dot">i<span class="tip">Default A$2,100/yr. VIC comprehensive averages A$2,094/yr (ages 30–49) to A$2,940/yr (all ages), 2025. No insurer publishes US-license terms — call to confirm before relying on cover.</span></span>
+        </label>
+        <input type="number" id="ovInsurance" step="50">
+      </div>
+      <div class="assump-field">
+        <label>Service + repairs / yr (A$)</label>
+        <input type="number" id="ovService" step="25">
+      </div>
+      <div class="assump-field">
+        <label>Rego + TAC / yr (A$)</label>
+        <input type="number" id="ovRego" step="25">
+      </div>
+      <div class="assump-field">
+        <label>Subscription monthly (A$)</label>
+        <input type="number" id="ovSubMonthly" step="10">
+      </div>
+      <div class="assump-field">
+        <label>Subscription bond (A$)</label>
+        <input type="number" id="ovSubUpfront" step="50">
+      </div>
+      <div class="assump-field">
+        <label>FX rate (AUD per USD)</label>
+        <input type="range" id="ovFx" min="1.30" max="1.60" step="0.01">
+        <span class="fx-val" id="ovFxVal">1.43</span>
+      </div>
+    </div>
+    </div>
+    <!-- /ADDED 27 Jul 2026: end of full-controls wrapper -->
+
+    <!-- ADDED 27 Jul 2026: collapsible controls — preserve -->
+    <div id="controlsSlim" class="controls-slim">
+      <span class="cs-summary" id="controlsSlimSummary">—</span>
+      <span class="cs-actions">
+        <button type="button" class="cs-edit-btn" id="slimEditBtn">⚙ Edit</button>
+        <button type="button" class="cs-edit-btn" id="slimExpandBtn" title="Show the full header again">⌄ Expand</button>
+      </span>
+    </div>
+
+    <div class="tab-nav" id="tabNav">
+      <button type="button" class="tab-btn active" data-tab="compare">① Compare</button>
+      <button type="button" class="tab-btn" data-tab="cars">② Cars &amp; Budget</button>
+      <button type="button" class="tab-btn" data-tab="brands">③ Brands 101</button>
+      <button type="button" class="tab-btn" data-tab="subs">④ Subscriptions</button>
+      <button type="button" class="tab-btn" data-tab="playbook">⑤ Playbook &amp; Risks</button>
+      <button type="button" class="tab-btn" data-tab="runningcosts">⑥ Running Costs</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ TAB 1: COMPARE ============ -->
+  <div class="tab-panel" id="tab-compare">
+
+    <div class="tile-row" id="tileRow">
+      <div class="tile">
+        <div class="tile-label"><span class="swatch" style="background:var(--series-1)"></span>Buy net cost</div>
+        <div class="tile-value" id="tileBuyValue">—</div>
+        <div class="tile-sub" id="tileBuySub">—</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label"><span class="swatch" style="background:var(--series-2)"></span>Subscribe net cost</div>
+        <div class="tile-value" id="tileSubValue">—</div>
+        <div class="tile-sub" id="tileSubSub">—</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Difference</div>
+        <div class="tile-value" id="tileDiffValue">—</div>
+        <div class="tile-sub" id="tileDiffSub">—</div>
+      </div>
+      <div class="tile rec">
+        <div class="tile-label">Recommendation</div>
+        <div class="tile-value" id="tileRecValue">—</div>
+        <div class="tile-sub" id="tileRecSub">—</div>
+      </div>
+    </div>
+
+    <div class="pointer-chip-row"><a href="#inclusionsAnchor">Full included-vs-not breakdown: see the Inclusions matrix below ↓</a></div>
+
+    <section class="card">
+      <h2>Cumulative net cost, month 0–48</h2>
+      <p class="card-note">Buy line = purchase costs + accrued running costs − resale value <em>if sold at that month</em>, for the selected budget tier. Subscribe has no resale — it ends at zero asset. The vertical marker shows your selected duration; the ring marks the breakeven month for the selected tier.</p>
+      <div class="breakeven-banner" id="breakevenBanner">Breakeven — <strong>—</strong></div>
+      <div class="chart-toolbar">
+        <div class="toolbar-left">
+          <label><input type="checkbox" id="showAllTiersChk"> Show all tiers (dashed)</label>
+        </div>
+        <button class="ghost-btn" id="toggleTableBtn" type="button">View as table</button>
+      </div>
+      <div class="chart-shell">
+        <svg id="costChart" viewBox="0 0 920 420" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="chartTooltip"></div>
+      </div>
+      <div class="legend-row" id="chartLegend"></div>
+      <div id="chartTableWrap" class="hidden table-scroll">
+        <table class="data-table" id="chartTable">
+          <thead><tr id="chartTableHead"><th>Month</th><th class="num">Buy (selected tier)</th><th class="num">Subscribe</th></tr></thead>
+          <tbody id="chartTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Cost composition at <span id="compDurationLabel">36</span> months</h2>
+      <p class="card-note">Each bar breaks the net cost above into its parts. Same category keeps the same color wherever it appears.</p>
+      <div class="stack-wrap" id="stackWrap"></div>
+      <div class="stack-legend" id="stackLegend"></div>
+    </section>
+
+    <section class="card" id="inclusionsAnchor">
+      <h2>What's included: Buy vs Subscribe</h2>
+      <p class="card-note">✓ included · ✗ not included · $ included with a cost caveat. Amounts shown are indicative ranges, not the live model.</p>
+      <div class="table-scroll">
+      <table class="data-table" id="inclusionsTable">
+        <thead><tr><th style="width:22%">Item</th><th style="width:39%">Buy</th><th style="width:39%">Subscribe</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </section>
+
+    <!-- ADDED 26 Jul 2026: Running Costs + novated content. Weekly listings-refresh task: PRESERVE these sections; only listing data elsewhere should change. -->
+    <section class="card" id="novatedPanel">
+      <h2>A third option: novated lease (via employer)</h2>
+      <p class="card-note">No published $/mo example for a typical used-SUV novated lease was found in research — nothing below is a fabricated cost line. This is mechanics and eligibility only; get a real quote from your employer's provider.</p>
+
+      <h3>How it works</h3>
+      <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; margin:0 0 12px;">A novated lease is a 3-way deal between you, your employer, and a lease/finance provider: your employer has to offer it (ask HR/payroll), and lease payments — plus running costs, if you bundle them in — come out of your <strong>pre-tax</strong> salary via salary packaging, instead of paying for the car with after-tax dollars.</p>
+
+      <div class="warn-box">
+        <h4>482 visa holders: ask before assuming</h4>
+        <p>Individual novated-lease providers set their own eligibility rules for temporary-visa holders, and those policies aren't published anywhere. This is case-by-case — ask your employer's designated novated lease provider directly whether a 482 (Skills in Demand) visa qualifies before you plan around it.</p>
+      </div>
+
+      <h3>The EV angle</h3>
+      <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; margin:0 0 4px;">The EV FBT (fringe benefits tax) exemption is active in 2026: a battery-electric vehicle priced under the luxury car tax threshold of <span class="money" data-aud="91661"></span> is FBT-exempt (plug-in hybrids lost this exemption in April 2025) — which makes a novated EV lease unusually cheap on a pre-tax basis compared with an equivalent petrol car.</p>
+      <p style="font-size:12.5px; color:var(--text-muted); line-height:1.6; margin:0;">The May 2026 Budget proposed phasing this exemption down from 2027 — <strong>that's a proposal, not yet law.</strong> Don't lock in a multi-year decision assuming it survives unchanged.</p>
+
+      <div class="assump-field" style="max-width:280px; margin-top:16px;">
+        <label>Novated monthly quote (A$, optional)
+          <span class="info-dot">i<span class="tip">Leave blank to hide. If your employer's provider gives you a real quote, enter it here to draw a third line on the "Cumulative net cost" chart above — a straight-line total with no resale value modeled, since lease-end buyout terms vary by provider.</span></span>
+        </label>
+        <input type="number" id="ovNovatedMonthly" step="10" placeholder="e.g. 650">
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ============ TAB 2: CARS & BUDGET TIERS ============ -->
+  <div class="tab-panel hidden" id="tab-cars">
+    <section class="card">
+      <h2>Real Melbourne listings — <span id="carsTierLabel">Tier 12.5k</span> <span class="snapshot-badge" id="snapshotBadgeCars">Snapshot: 31 Aug 2026</span></h2>
+      <p class="card-note">Point-in-time examples researched July 2026 — stock turns over weekly. Badges compare each listing's price to your current budget-tier cap (<span id="carsCapLabel">A$17,875</span>, live at your chosen currency/FX).</p>
+
+      <div class="filter-bar" id="filterBar">
+        <div class="filter-field">
+          <label for="filterBrand">Brand</label>
+          <select id="filterBrand">
+            <option value="any">Any</option>
+            <option value="mg">MG</option>
+            <option value="gwm">GWM</option>
+            <option value="chery">Chery</option>
+            <option value="mitsubishi">Mitsubishi</option>
+            <option value="hyundai">Hyundai</option>
+            <option value="mazda">Mazda</option>
+            <option value="toyota">Toyota</option>
+            <option value="kia">Kia</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label for="filterBody">Body style</label>
+          <select id="filterBody">
+            <option value="suv" selected>SUV</option>
+            <option value="any">Any</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label for="filterMaxPrice">Max price (A$)</label>
+          <input type="number" id="filterMaxPrice" step="100">
+        </div>
+        <div class="filter-field">
+          <label for="filterMaxKm">Max km</label>
+          <select id="filterMaxKm">
+            <option value="any">Any</option>
+            <option value="30000">30,000</option>
+            <option value="60000">60,000</option>
+            <option value="100000">100,000</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label for="filterYear">Min year</label>
+          <select id="filterYear">
+            <option value="2020">2020</option>
+            <option value="2021">2021</option>
+            <option value="2022">2022</option>
+            <option value="2023" selected>2023</option>
+            <option value="2024">2024</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-match-line" id="filterMatchLine">— of — snapshot cars match</div>
+      <div class="search-links-row" id="searchLinksRow"></div>
+      <div class="fb-note">Facebook Marketplace can't be linked with filters (login-walled). Links open current live results — the snapshot below is fixed.</div>
+
+      <div id="carsEmptyState"></div>
+      <div class="card-grid" id="carsGrid"></div>
+      <div class="callout-box">
+        <h4>Market truths</h4>
+        <ol>
+          <li>At ≤A$17,100 (US$12,000) the 2023+ market is effectively <strong>one car</strong> — the MG ZS Excite with 32–60k km.</li>
+          <li>Genuinely low-km 2023+ cars under A$20k are <strong>dealer demo or pre-rego stock</strong>, not privately-driven cars.</li>
+          <li>No brand-new SUV exists under ~A$23k — cheapest new is the 2026 MG ZS Vibe at A$22,990 intro, then Chery Tiggo 4 Urban A$23,990 and Mahindra XUV 3XO A$23,990. Stretching to new costs only ~A$3,000–4,000 above the demo cars above, but buys a full warranty from zero km instead of ~4 years remaining.</li>
+          <li>carsales "84 results"-style counts mix used, demo, and new-on-order stock — the real used count at any given price is much smaller.</li>
+        </ol>
+      </div>
+
+      <!-- ADDED 26 Jul 2026: Running Costs + novated content. Weekly listings-refresh task: PRESERVE these sections; only listing data elsewhere should change. -->
+      <div class="callout-box">
+        <h4>Set up alerts</h4>
+        <p style="margin:0 0 10px; font-size:12.5px; color:var(--text-secondary); line-height:1.6;">This snapshot is a point-in-time capture — stock turns over in days, not weeks. Run a live search on carsales, then save it and turn on alerts (free account required) to get notified the moment new stock lists at your budget.</p>
+        <a class="search-link-btn" href="https://www.carsales.com.au/cars/used/" target="_blank" rel="noopener">Open carsales used search ↗</a>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ TAB 3: BRANDS 101 ============ -->
+  <div class="tab-panel hidden" id="tab-brands">
+    <section class="card">
+      <h2>Brands 101 — for an American who's never heard of these</h2>
+      <p class="card-note">MG, GWM Haval, and Chery are <strong>not sold in the USA at all</strong> — no US parts/service familiarity applies to any of them.</p>
+      <div class="card-grid" id="brandsGrid"></div>
+    </section>
+    <section class="card">
+      <h2>Familiar names, different cars</h2>
+      <p class="card-note">Two nameplates Kevin may recognize from the US market — but the Australian version is not the car he's picturing.</p>
+      <div class="familiar-strip" id="familiarStrip"></div>
+    </section>
+  </div>
+
+  <!-- ============ TAB 4: SUBSCRIPTIONS ============ -->
+  <div class="tab-panel hidden" id="tab-subs">
+    <div class="market-banner">This market consolidated hard: Uber Carshare died 2024; Karmo bought Motopool (Dec 2024) and Simplr (Jun 2026), and now holds a 17.5% stake from Eagers Automotive. Three brands are now one backend.</div>
+
+    <section class="card" id="bundledPanel">
+      <h2>What's bundled in a subscription price</h2>
+      <p class="card-note">If you bought instead, here's roughly what each of these would cost you per year — computed live from your current assumptions where an input exists.</p>
+      <div class="table-scroll">
+      <table class="data-table" id="bundledTable">
+        <thead><tr><th>Included in the subscription price</th><th class="num">Cost if you bought it yourself</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div class="bundled-sum-row" id="bundledSumRow">—</div>
+      <div class="bundled-punchline" id="bundledPunchline">—</div>
+      <div class="callout-box">
+        <h4>Not included anywhere — buy or subscribe</h4>
+        <ul>
+          <li>Fuel</li>
+          <li>Tolls — Melbourne CityLink needs its own account</li>
+          <li>Excess km — A$0.30–0.40/km over the weekly/monthly cap</li>
+          <li>Damage excess if you crash — A$1,000–5,000, by provider</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Ranked providers</h2>
+      <p class="card-note">Your affordability cap: US$800/mo ≈ <span id="capAudLabel">A$1,145</span> at the current FX rate. Vehicle examples below show live pass/fail against that cap.</p>
+      <div class="provider-grid" id="providerGrid"></div>
+    </section>
+
+    <section class="card">
+      <h2>Not viable</h2>
+      <div class="not-viable-strip" id="notViableStrip"></div>
+    </section>
+
+    <section class="card">
+      <h2>Fallbacks</h2>
+      <div class="fallback-row" id="fallbackRow"></div>
+    </section>
+
+    <section class="card">
+      <h2>Docs checklist</h2>
+      <div class="docs-checklist">
+        <div>Passport</div>
+        <div>US driver's license</div>
+        <div>International Driving Permit (IDP) from AAA before departure — cheap, same-day, kills ambiguity at Karmo/Alpha</div>
+        <div>90 days of US bank statements</div>
+        <div>Melbourne address</div>
+        <div>AU mobile number</div>
+        <div>Internationally-capable credit or debit card</div>
+      </div>
+      <div class="callout-box">
+        <h4>First-week play</h4>
+        <p style="margin:0; font-size:12.5px; color:var(--text-secondary); line-height:1.6;">Apply to Carbar (self-service, no credit check) the moment you land, while emailing Karmo in parallel to get written answers on whether US bank statements satisfy their income-proof requirement and how they treat a US license/IDP. That way you have a working vehicle from week one and a clear answer on the strongest platform before committing further.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ TAB 5: PLAYBOOK & RISKS ============ -->
+  <div class="tab-panel hidden" id="tab-playbook">
+
+    <div class="callout">
+      <div class="callout-kicker">Recommended path</div>
+      <h2>Hybrid: subscribe first, then buy</h2>
+      <p>Land in Melbourne → start a Carbar subscription immediately (no credit check, US bank statements accepted per policy wording) → use 4–8 weeks to convert your license, collect insurance quotes as a local-license holder, and shop the used market without time pressure → then buy at your chosen budget tier.</p>
+      <p>Extra cost vs. buying on day one: roughly <span class="money" data-aud="2600"></span>. Frame that as insurance against buying blind in week one, jet-lagged, with no local market knowledge.</p>
+      <div class="callout-steps">
+        <div class="step-chip"><b>Week 0</b>Arrive, start Carbar subscription same-day</div>
+        <div class="step-chip"><b>Weeks 1–4</b>Convert VIC license, open local banking rhythm</div>
+        <div class="step-chip"><b>Weeks 4–8</b>Get insurance quotes as a local-license holder, shop inspected used cars</div>
+        <div class="step-chip"><b>Week ~8</b>Buy at chosen tier, cancel subscription</div>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>Step-by-step checklist</h2>
+      <div class="timeline">
+        <div class="tl-phase">
+          <div class="tl-phase-name">Pre-departure — now through August 2026</div>
+          <ul>
+            <li><strong>A September arrival means this phase is ~6 weeks long, starting now.</strong> Bank account, funds transfer, IDP from AAA, and the Carbar application docs (passport, US license, 90 days of bank statements) should all be moving in August.</li>
+            <li>Open an AU bank account — CBA, Westpac, or NAB all support pre-arrival account opening for temporary-visa holders (normally available up to 12 months early; you have weeks, so start immediately).</li>
+            <li>Transfer funds via <strong>Wise or OFX</strong> (~0.4–0.5% cost, ≈ <span class="money-range" data-low="50" data-high="150"></span> on a <span class="money-usd" data-usd="12000"></span> transfer) instead of a bank wire (≈ <span class="money-range" data-low="350" data-high="1200"></span>).</li>
+            <li>AUSTRAC reporting is the <strong>receiving bank's</strong> job — nothing for Kevin to file.</li>
+          </ul>
+        </div>
+        <div class="tl-phase">
+          <div class="tl-phase-name">Arrival — September 2026</div>
+          <ul>
+            <li>VIC allows driving on a US license for <strong>6 months</strong> after arrival — for a September landing, the conversion deadline is <strong>March 2027</strong>.</li>
+            <li>Convert to a VIC license — the US is on VicRoads' <strong>recognised country list</strong>, so conversion needs <strong>no driving test</strong>, only an eyesight test. Cost A$119–353 depending on license term (3yr vs 10yr). See the Running Costs tab for detail.</li>
+            <li>Bridge the gap with a Carbar subscription while license and insurance get sorted.</li>
+          </ul>
+        </div>
+        <div class="tl-phase">
+          <div class="tl-phase-name">Purchase — target September–October 2026</div>
+          <ul>
+            <li>Run a <strong>PPSR check</strong> (<span class="money" data-aud="2"></span>) before paying anyone.</li>
+            <li>Get a <strong>pre-purchase inspection</strong> (≈ <span class="money" data-aud="250"></span>).</li>
+            <li>The seller provides the <strong>roadworthy certificate</strong> — a VIC requirement and the seller's cost, not yours.</li>
+            <li>Pay via a <strong>domestic transfer from your AU account</strong>, not directly from the US.</li>
+            <li>Transfer registration within <strong>14 days</strong> of purchase.</li>
+            <li>Pay <strong>stamp duty</strong> — 4.2% of the purchase price in VIC.</li>
+          </ul>
+        </div>
+        <div class="tl-phase">
+          <div class="tl-phase-name">Insurance</div>
+          <ul>
+            <li>Get quotes from <strong>AAMI, Budget Direct, Youi, NRMA</strong>, and broker <strong>National Cover</strong>.</li>
+            <li>US no-claims history letters are <strong>not accepted</strong> by AU insurers.</li>
+            <li>A freshly converted license may carry a <span class="money" data-aud="500"></span> inexperienced-driver excess — get this <strong>in writing</strong> before binding cover.</li>
+          </ul>
+        </div>
+        <div class="tl-phase">
+          <div class="tl-phase-name">Exit</div>
+          <ul>
+            <li>List the car with a <strong>4–8 week sale runway</strong> to avoid the rushed-sale discount.</li>
+            <li>Repatriate proceeds via <strong>Wise or OFX</strong>.</li>
+            <li>Close the AU bank account before departure.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Risk register</h2>
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Side</th><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead>
+        <tbody>
+          <tr><td class="risk-side">Buy</td><td>Lemon risk on a used SUV bought sight-unseen from abroad</td><td><span class="sev sev-serious"><span class="sev-dot"></span>Serious</span></td><td>Independent pre-purchase inspection + PPSR check before paying</td></tr>
+          <tr><td class="risk-side">Buy</td><td>Insurance loading or refusal on a foreign license</td><td><span class="sev sev-warning"><span class="sev-dot"></span>Warning</span></td><td>Convert license first via the subscription bridge</td></tr>
+          <tr><td class="risk-side">Buy</td><td>Resale timing pressure at departure — forced quick sale costs 10–15% more</td><td><span class="sev sev-warning"><span class="sev-dot"></span>Warning</span></td><td>List 4–8 weeks before departure, not at the last minute</td></tr>
+          <tr><td class="risk-side">Buy</td><td>Warranty transferability is <strong>unconfirmed</strong> for GWM and Chery</td><td><span class="sev sev-serious"><span class="sev-dot"></span>Serious</span></td><td>Get transfer confirmed in writing before buying used; MG and Mitsubishi have the clearest policies</td></tr>
+          <tr><td class="risk-side">Buy</td><td>The demo-car trap — demo-priced "used" cars at A$19,888–19,990 sit only ~A$3k below a genuinely new SUV with a full warranty from zero km</td><td><span class="sev sev-warning"><span class="sev-dot"></span>Warning</span></td><td>Check current new-model run-out pricing (MG ZS Vibe, Chery Tiggo 4 Urban, Mahindra XUV 3XO) before paying demo-car money</td></tr>
+          <tr><td class="risk-side">Buy</td><td>MG's transferable 7yr warranty is voided by <strong>any</strong> missed scheduled service</td><td><span class="sev sev-serious"><span class="sev-dot"></span>Serious</span></td><td>Demand the full service logbook before buying any MG; walk away if it has gaps</td></tr>
+          <tr><td class="risk-side">Buy</td><td>FX swing of ±5% on your <span class="money-usd" id="riskBudgetUsd" data-usd="12500"></span> budget ≈ <span class="money-usd" id="riskFxSwingSpan" data-usd="625"></span></td><td><span class="sev sev-warning"><span class="sev-dot"></span>Warning</span></td><td>Buy AUD in tranches via Wise/OFX rather than one lump transfer</td></tr>
+          <tr><td class="risk-side">Buy</td><td>Chinese-brand resale drag if buyer sentiment softens over the next 3 years</td><td><span class="sev sev-warning"><span class="sev-dot"></span>Warning</span></td><td>Model resale conservatively; the 36-mo anchors here already assume a real haircut</td></tr>
+          <tr><td class="risk-side">Subscribe</td><td>Damage excess of <span class="money-range" data-low="3000" data-high="5000"></span> per incident at Carbar is the hidden subscription risk — no reduction add-on found</td><td><span class="sev sev-serious"><span class="sev-dot"></span>Serious</span></td><td>Drive conservatively during the bridge period; ask directly about excess-reduction options</td></tr>
+          <tr><td class="risk-side">Subscribe</td><td>At your selected <span id="riskSubMonths">36</span>-month duration, full-term subscription spend is <span class="money" id="riskSubSpend" data-aud="0"></span> with zero asset at the end</td><td><span class="sev sev-serious"><span class="sev-dot"></span>Serious</span></td><td>Cap subscription duration; convert to owning once settled</td></tr>
+          <tr><td class="risk-side">Subscribe</td><td>Km caps (~384–385/wk) and excess-km fees</td><td><span class="sev sev-warning"><span class="sev-dot"></span>Warning</span></td><td>Model expected km before signing; budget for overage during the bridge</td></tr>
+          <tr><td class="risk-side">Subscribe</td><td>Provider churn — market consolidated hard in the last 18 months (Uber Carshare exited, Motopool and Simplr absorbed into Karmo)</td><td><span class="sev sev-serious"><span class="sev-dot"></span>Serious</span></td><td>Keep a short list of backup providers; avoid long lock-ins; Carbar has no minimum term</td></tr>
+          <tr><td class="risk-side">Both</td><td>No Australian credit history rules out car finance and a novated lease</td><td><span class="sev sev-warning"><span class="sev-dot"></span>Warning</span></td><td>Pay cash — this is the standard cash-buyer workaround</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <footer class="sources">
+      <strong>Sources &amp; confidence.</strong> Researched July 2026 via Autotrader, CarsGuide, carsales (screenshot only — direct fetch was blocked), ANCAP, brand warranty pages, provider websites/T&amp;Cs, VicRoads, and the ATO/AUSTRAC. Resale values are modeled estimates, not appraisals. <strong>UNCONFIRMED</strong> throughout this tool: exact insurance premiums, GWM/Chery warranty-transfer wording, and Karmo's US-document policy — verify each live before relying on it. The VIC license-conversion test exemption is now verified (see Running Costs tab). This tool is a planning aid, not financial advice.
+    </footer>
+  </div>
+
+  <!-- ADDED 26 Jul 2026: Running Costs + novated content. Weekly listings-refresh task: PRESERVE these sections; only listing data elsewhere should change. -->
+  <div class="tab-panel hidden" id="tab-runningcosts">
+
+    <div class="tile-row">
+      <div class="tile">
+        <div class="tile-label">Before tolls</div>
+        <div class="tile-value"><span class="money-range" data-low="453" data-high="578"></span></div>
+        <div class="tile-sub">per month — fuel, insurance, rego, servicing, roadside, amortized stamp duty</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">+ Light tolls</div>
+        <div class="tile-value"><span class="money-range" data-low="463" data-high="598"></span></div>
+        <div class="tile-sub">weekend-only driving</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">+ Commuter tolls</div>
+        <div class="tile-value"><span class="money-range" data-low="563" data-high="748"></span></div>
+        <div class="tile-sub">daily freeway commute</div>
+      </div>
+      <div class="tile rec">
+        <div class="tile-label">vs. a subscription</div>
+        <div class="tile-value"><span class="money" data-aud="1050"></span>/mo</div>
+        <div class="tile-sub">current subscription default (Subscriptions tab) — even commuter-toll ownership undercuts it</div>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>Monthly all-in ownership — a ~$20k used SUV</h2>
+      <p class="card-note">The honest comparison against a <span class="money" data-aud="1050"></span>/mo subscription. These are researched real-world ranges (July 2026), fixed — independent of the interactive Buy vs Subscribe model on the Compare tab, which uses your own editable assumptions instead.</p>
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Cost item</th><th class="num">Monthly</th></tr></thead>
+        <tbody>
+          <tr><td>Fuel</td><td class="num"><span class="money-range" data-low="141" data-high="176"></span></td></tr>
+          <tr><td>Insurance</td><td class="num"><span class="money-range" data-low="175" data-high="245"></span></td></tr>
+          <tr><td>Rego (incl. TAC/CTP)</td><td class="num"><span class="money" data-aud="80"></span></td></tr>
+          <tr><td>Servicing</td><td class="num"><span class="money-range" data-low="22" data-high="42"></span></td></tr>
+          <tr><td>Roadside assist</td><td class="num"><span class="money" data-aud="12"></span></td></tr>
+          <tr><td>Stamp duty (amortized over 3 yrs)</td><td class="num"><span class="money" data-aud="23"></span></td></tr>
+          <tr><td><strong>Subtotal before tolls</strong></td><td class="num"><strong><span class="money-range" data-low="453" data-high="578"></span></strong></td></tr>
+          <tr><td>+ Light tolls (weekend-only)</td><td class="num"><span class="money-range" data-low="10" data-high="20"></span></td></tr>
+          <tr><td>+ Commuter tolls (daily freeway)</td><td class="num"><span class="money-range" data-low="110" data-high="170"></span></td></tr>
+          <tr><td><strong>Total incl. light tolls</strong></td><td class="num"><strong><span class="money-range" data-low="463" data-high="598"></span></strong></td></tr>
+          <tr><td><strong>Total incl. commuter tolls</strong></td><td class="num"><strong><span class="money-range" data-low="563" data-high="748"></span></strong></td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Tolls</h2>
+      <p class="card-note">Melbourne's freeways are all tolled — CityLink (Transurban) and EastLink are the two you'll hit. Both need a Linkt account.</p>
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Toll road</th><th class="num">Cost</th></tr></thead>
+        <tbody>
+          <tr><td>CityLink — per trip</td><td class="num">A$2.09–3.33</td></tr>
+          <tr><td>CityLink — daily cap</td><td class="num">A$12.51</td></tr>
+          <tr><td>EastLink — daily cap</td><td class="num">A$7.77</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="warn-box">
+        <h4>Set up Linkt before your first freeway drive</h4>
+        <p>Linkt account setup is A$3.50 online — do it before you drive CityLink or EastLink even once. Without a tag/account, casual no-tag fees run A$0.37–0.55/trip, and an unpaid toll escalates: invoice fees of A$7.26–14.53, then a police infringement notice (amount unverified).</p>
+      </div>
+      <p class="card-note" style="margin-top:14px;">Modeled monthly toll spend (estimates, label as such): weekend-only driving ~<span class="money-range" data-low="10" data-high="20"></span>/mo; CityLink daily commuter ~<span class="money-range" data-low="110" data-high="130"></span>/mo; EastLink commuter ~<span class="money" data-aud="170"></span>/mo.</p>
+    </section>
+
+    <section class="card">
+      <h2>Insurance</h2>
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>VIC comprehensive, 2025</th><th class="num">Annual</th></tr></thead>
+        <tbody>
+          <tr><td>Average, ages 30–49</td><td class="num"><span class="money" data-aud="2094"></span></td></tr>
+          <tr><td>Average, all ages</td><td class="num"><span class="money" data-aud="2940"></span></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="card-note" style="margin-top:10px;">+8.29% YoY (canstar.com.au, 2025). Dashboard default assumption: <span class="money" data-aud="2100"></span>/yr — editable in "Adjust assumptions" above.</p>
+      <div class="warn-box">
+        <h4>No insurer publishes US-license terms</h4>
+        <p>Budget Direct, AAMI, RACV, Allianz and Youi don't publish coverage, loading, or no-claims-history-portability terms for a US license online. <strong>Call and confirm before relying on cover.</strong> CommBank explicitly states it covers recognized international licenses — a reasonable first call.</p>
+      </div>
+      <p class="card-note" style="margin-top:14px;">CTP is bundled into rego via the TAC charge — no separate purchase needed.</p>
+    </section>
+
+    <section class="card">
+      <h2>Fuel</h2>
+      <p class="card-note">Melbourne U91 average <strong>187.5c/L</strong> (26 Jul 2026) ≈ <strong>US$4.96/gallon</strong> at FX 0.6984 (fuelradar.com.au).</p>
+      <div class="callout-box">
+        <h4>Tip</h4>
+        <p style="margin:0; font-size:12.5px; color:var(--text-secondary); line-height:1.6;">Melbourne runs on a ~6-week fuel price cycle (accc.gov.au) — prices swing sharply within that window. Fill on the dip, not the peak.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Child restraints — a legal trap for arriving Americans</h2>
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Age</th><th>VIC requirement</th></tr></thead>
+        <tbody>
+          <tr><td>0–6 months</td><td>Rear-facing restraint</td></tr>
+          <tr><td>6 months–4 years</td><td>Rear-facing or forward-facing harness</td></tr>
+          <tr><td>4–7 years</td><td>Forward-facing harness or booster seat</td></tr>
+          <tr><td>7–16 years</td><td>Booster seat or adult seatbelt (whichever fits properly)</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="card-note" style="margin-top:10px;">Fine for non-compliance: ~<span class="money" data-aud="2091"></span> (transport.vic.gov.au).</p>
+      <div class="warn-box">
+        <h4>US car seats are illegal in Australia</h4>
+        <p>US-certified restraints (FMVSS 213) do <strong>not</strong> meet the Australian standard (AS/NZS 1754) and are illegal to use here (productsafety.gov.au, choice.com.au). Don't ship a US car seat — buy locally after arrival.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>License conversion — the good news</h2>
+      <p class="card-note">Previously unconfirmed in this tool; now verified July 2026.</p>
+      <div class="callout-box">
+        <h4>US license converts without a driving test</h4>
+        <ul>
+          <li>The USA is on VicRoads' <strong>recognised country list</strong> — conversion needs <strong>no driving test</strong>, only an eyesight test (a hazard perception test may be required case-by-case).</li>
+          <li><strong>6-month deadline</strong> from the start of VIC residency to convert.</li>
+          <li>Cost: <span class="money-range" data-low="119" data-high="353"></span> depending on the license term chosen (3-year vs 10-year).</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer class="sources">
+      <strong>Sources.</strong> Running-cost figures researched July 2026 via linkt.com.au, eastlink.com.au, canstar.com.au, tac.vic.gov.au, vicroads.vic.gov.au, fuelradar.com.au, accc.gov.au, carexpert.com.au, RACV, transport.vic.gov.au, productsafety.gov.au, choice.com.au, and the ATO. Monthly toll scenarios are estimates, labeled as such; the novated-lease content on the Compare tab is mechanics and eligibility only — no fabricated dollar figures. This tab is a planning aid, not financial or insurance advice.
+    </footer>
+
+  </div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ============================================================
+  // DATA
+  // ============================================================
+  var TIERS = {
+    t10:   { id:'t10',   usd:10000, purchase:14300, resale36:7200,  label:'Pre-2023 territory — no 2023+ SUV exists at this level' },
+    t12_5: { id:'t12_5', usd:12500, purchase:16500, resale36:8700,  label:'2023 MG ZS Excite territory (32–60k km)' },
+    t15:   { id:'t15',   usd:15000, purchase:19900, resale36:11500, label:'Full 2023+ choice incl. near-new demos' }
+  };
+  var TIER_ORDER = ['t10', 't12_5', 't15'];
+  var TIER_NAMES = { t10:'Tier 10k', t12_5:'Tier 12.5k', t15:'Tier 15k' };
+  var CUSTOM_PURCHASE_CAP = 45000; // AUD sanity cap for interpolated custom-budget purchase price
+
+  var DATA_ASOF = '2026-08-31';
+  function formatAsOf(iso) {
+    var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var parts = iso.split('-');
+    var y = parts[0], m = parseInt(parts[1], 10) - 1, d = parseInt(parts[2], 10);
+    return d + ' ' + MONTHS[m] + ' ' + y;
+  }
+
+  // ADDED 2 Sep 2026: self-aging freshness read-out — preserve.
+  // The weekly refresh task silently produced nothing for five straight weeks in Aug 2026 and
+  // the static date gave no signal, because a date only reads as stale if you remember today's.
+  // This turns DATA_ASOF into an age with a colour, so a stalled refresh is visible on the page.
+  function freshnessInfo() {
+    var asOf = new Date(DATA_ASOF + 'T00:00:00');
+    var days = Math.floor((Date.now() - asOf.getTime()) / 86400000);
+    if (isNaN(days)) return { days: null, cls: '', text: 'Listings snapshot: ' + formatAsOf(DATA_ASOF) };
+    var rel = days <= 0 ? 'updated today' : days === 1 ? 'updated yesterday' : 'updated ' + days + ' days ago';
+    var base = 'Listings snapshot: ' + formatAsOf(DATA_ASOF) + ' · ';
+    if (days <= 7)  return { days: days, cls: 'fresh-ok',    text: base + rel };
+    if (days <= 13) return { days: days, cls: 'fresh-warn',  text: base + days + ' days old — last weekly refresh may have failed' };
+    return              { days: days, cls: 'fresh-stale', text: base + days + ' days old — the weekly refresh has stopped running' };
+  }
+
+  function applyFreshness() {
+    var f = freshnessInfo();
+    var header = document.getElementById('snapshotBadgeHeader');
+    if (header) {
+      header.textContent = f.text;
+      header.classList.remove('fresh-ok', 'fresh-warn', 'fresh-stale');
+      if (f.cls) header.classList.add(f.cls);
+      header.title = 'Data captured ' + formatAsOf(DATA_ASOF) + '. Refreshed by the weekly Monday task.';
+    }
+    var cars = document.getElementById('snapshotBadgeCars');
+    if (cars) {
+      cars.classList.remove('fresh-ok', 'fresh-warn', 'fresh-stale');
+      if (f.cls) cars.classList.add(f.cls);
+    }
+  }
+
+  // Model-level Autotrader path slugs, used for deep links and "find similar" searches.
+  // GWM verified only as make-only ("gwm"); "gwm-haval" is unverified, so the model slug below
+  // is used only in the per-listing deep link (id-anchored), never for the filter-bar make search.
+  var MODEL_SLUG = {
+    MG:        { makeSlug: 'mg',         modelSlug: 'zs' },
+    GWM:       { makeSlug: 'gwm',        modelSlug: 'haval-jolion' },
+    Mitsubishi:{ makeSlug: 'mitsubishi', modelSlug: 'asx' },
+    Hyundai:   { makeSlug: 'hyundai',    modelSlug: 'venue' },
+    Chery:     { makeSlug: 'chery',      modelSlug: null }
+  };
+
+  // A future automated session refreshes ONLY the array between the markers below.
+  // Schema per listing: {yr, make, model, variant, price, driveaway, km, suburb, zone, note, atId, verified}
+  // (warranty/avoid are additional fields kept for existing rendering; safe to ignore on refresh.)
+  var LISTINGS_DATA =
+//==LISTINGS_DATA_START==
+[
+  {"yr": 2023, "make": "MG", "model": "ZS", "variant": "Excite", "price": 14888, "driveaway": false, "km": 59888, "suburb": "Ringwood", "zone": "ringwood", "note": "FLOOR — unchanged after last week's $1,000 cut; 5th week on market; strongest haggle target", "atId": 15178991, "verified": false, "slug": "mg/zs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "ZS", "variant": "Excite", "price": 15490, "driveaway": false, "km": 34503, "suburb": "Altona North", "zone": "altona-north", "note": "Mid-30s km under $15.5k", "atId": 15272648, "verified": false, "slug": "mg/zs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2024, "make": "MG", "model": "ZS", "variant": "Excite", "price": 16499, "driveaway": true, "km": 68824, "suburb": "Ringwood", "zone": "ringwood", "note": "Cheapest 2024 tracked, high km for age", "atId": 15277440, "verified": false, "slug": "mg/zs", "warranty": "~5 yrs remaining (to ~2031) — 7yr/unlimited MG warranty; verify logbook for transfer."},
+  {"yr": 2024, "make": "MG", "model": "ZS", "variant": "Excite", "price": 17490, "driveaway": false, "km": 25317, "suburb": "Altona North", "zone": "altona-north", "note": "NEW — low-km 2024 value", "atId": 15288395, "verified": false, "slug": "mg/zs", "warranty": "~5 yrs remaining (to ~2031) — 7yr/unlimited MG warranty; verify logbook for transfer."},
+  {"yr": 2024, "make": "MG", "model": "ZS", "variant": "Excite", "price": 17999, "driveaway": true, "km": 36594, "suburb": "Berwick", "zone": "berwick", "note": "NEW", "atId": 15285922, "verified": false, "slug": "mg/zs", "warranty": "~5 yrs remaining (to ~2031) — 7yr/unlimited MG warranty; verify logbook for transfer."},
+  {"yr": 2023, "make": "MG", "model": "ZS", "variant": "Excite", "price": 18680, "driveaway": true, "km": 31431, "suburb": "Burwood", "zone": "burwood", "note": "Cut −$700, now drive-away", "atId": 15038930, "verified": false, "slug": "mg/zs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "ZS", "variant": "Excite", "price": 18990, "driveaway": false, "km": 41566, "suburb": "Coburg North", "zone": "coburg-north", "note": "Display flipped to excl-charges (was drive-away)", "atId": 14918378, "verified": false, "slug": "mg/zs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "ZS", "variant": "Excite", "price": 19950, "driveaway": true, "km": 3482, "suburb": "Elsternwick", "zone": "elsternwick", "note": "3,482 km — lowest-km 2023 ZS tracked", "atId": 15278309, "verified": false, "slug": "mg/zs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2025, "make": "MG", "model": "ZS", "variant": "Excite", "price": 21444, "driveaway": false, "km": 20958, "suburb": "Bundoora", "zone": "bundoora", "note": "NEW — 2025 ZS enters bracket", "atId": 15280250, "verified": false, "slug": "mg/zs", "warranty": "~6 yrs remaining (to ~2032) — 7yr/unlimited MG warranty; verify logbook for transfer."},
+  {"yr": 2025, "make": "MG", "model": "ZS", "variant": "Excite", "price": 21444, "driveaway": false, "km": 24994, "suburb": "Bundoora", "zone": "bundoora", "note": "NEW", "atId": 15280251, "verified": false, "slug": "mg/zs", "warranty": "~6 yrs remaining (to ~2032) — 7yr/unlimited MG warranty; verify logbook for transfer."},
+  {"yr": 2025, "make": "MG", "model": "ZS", "variant": "Vibe Turbo", "price": 22444, "driveaway": true, "km": 20224, "suburb": "Bundoora", "zone": "bundoora", "note": "NEW — near-new reference", "atId": 15280549, "verified": false, "slug": "mg/zs", "warranty": "~6 yrs remaining (to ~2032) — 7yr/unlimited MG warranty; verify logbook for transfer."},
+  {"yr": 2025, "make": "MG", "model": "ZS", "variant": "Vibe Turbo", "price": 22444, "driveaway": true, "km": 26486, "suburb": "Bundoora", "zone": "bundoora", "note": "NEW", "atId": 15280546, "verified": false, "slug": "mg/zs", "warranty": "~6 yrs remaining (to ~2032) — 7yr/unlimited MG warranty; verify logbook for transfer."},
+  {"yr": 2023, "make": "MG", "model": "ZST", "variant": "Core", "price": 17999, "driveaway": true, "km": 15240, "suburb": "Bayswater", "zone": "bayswater", "note": "NEW — lowest-km ZST tracked", "atId": 15282367, "verified": false, "slug": "mg/zst", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "ZST", "variant": "Core", "price": 17990, "driveaway": true, "km": 19901, "suburb": "Coburg North", "zone": "coburg-north", "note": "Carryover — low-km value", "atId": 15140742, "verified": false, "slug": "mg/zst", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "ZST", "variant": "Core", "price": 17990, "driveaway": false, "km": 28938, "suburb": "Berwick", "zone": "berwick", "note": "NEW", "atId": 15266419, "verified": false, "slug": "mg/zst", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "ZST", "variant": "Core", "price": 17990, "driveaway": true, "km": 46514, "suburb": "Hoppers Crossing", "zone": "hoppers-crossing", "note": "Carryover unchanged", "atId": 15248214, "verified": false, "slug": "mg/zst", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2024, "make": "MG", "model": "ZST", "variant": "Vibe", "price": 18190, "driveaway": false, "km": 20032, "suburb": "Altona North", "zone": "altona-north", "note": "NEW — near-new 2024", "atId": 15276944, "verified": false, "slug": "mg/zst", "warranty": "~5 yrs remaining (to ~2031) — 7yr/unlimited MG warranty; verify logbook for transfer."},
+  {"yr": 2025, "make": "MG", "model": "ZST", "variant": "Vibe", "price": 18490, "driveaway": false, "km": 18428, "suburb": "Altona North", "zone": "altona-north", "note": "NEW — 2025 ZST under $18.5k", "atId": 15280683, "verified": false, "slug": "mg/zst", "warranty": "~6 yrs remaining (to ~2032) — 7yr/unlimited MG warranty; verify logbook for transfer."},
+  {"yr": 2023, "make": "MG", "model": "ZST", "variant": "Essence", "price": 19800, "driveaway": false, "km": 48084, "suburb": "Berwick", "zone": "berwick", "note": "NEW", "atId": 15270217, "verified": false, "slug": "mg/zst", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2024, "make": "MG", "model": "ZST", "variant": "Essence", "price": 19890, "driveaway": false, "km": 27975, "suburb": "Altona North", "zone": "altona-north", "note": "NEW", "atId": 15287856, "verified": false, "slug": "mg/zst", "warranty": "~5 yrs remaining (to ~2031) — 7yr/unlimited MG warranty; verify logbook for transfer."},
+  {"yr": 2023, "make": "MG", "model": "HS", "variant": "Vibe", "price": 16990, "driveaway": true, "km": 84292, "suburb": "Mornington", "zone": "mornington", "note": "NEW in table — high km", "atId": 15070944, "verified": false, "slug": "mg/hs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "HS", "variant": "Excite", "price": 17490, "driveaway": false, "km": 51174, "suburb": "Altona North", "zone": "altona-north", "note": "Carryover unchanged — mid-size under $17.5k", "atId": 15176257, "verified": false, "slug": "mg/hs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "HS", "variant": "Vibe", "price": 19500, "driveaway": true, "km": 77962, "suburb": "Frankston", "zone": "frankston", "note": "Now displayed $19,500 drive-away (was $16,990 sticker)", "atId": 15084144, "verified": false, "slug": "mg/hs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "HS", "variant": "Vibe", "price": 19500, "driveaway": true, "km": 78868, "suburb": "Frankston", "zone": "frankston", "note": "Now displayed $19,500 drive-away (was $16,990 sticker)", "atId": 15080123, "verified": false, "slug": "mg/hs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "HS", "variant": "Vibe", "price": 20500, "driveaway": true, "km": 55594, "suburb": "Frankston", "zone": "frankston", "note": "Carryover", "atId": 15084360, "verified": false, "slug": "mg/hs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "HS", "variant": "Excite", "price": 20990, "driveaway": false, "km": 51111, "suburb": "Coburg North", "zone": "coburg-north", "note": "NEW", "atId": 15018894, "verified": false, "slug": "mg/hs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "MG", "model": "HS", "variant": "Excite", "price": 21990, "driveaway": false, "km": 13834, "suburb": "Cheltenham", "zone": "cheltenham", "note": "Low-km mid-size; displayed +$500 vs last week (price-display variance)", "atId": 15223278, "verified": false, "slug": "mg/hs", "warranty": "~4 yrs remaining (to ~2030) — 7yr/unlimited MG warranty, transfers if service schedule kept: verify logbook."},
+  {"yr": 2023, "make": "GWM", "model": "Haval Jolion", "variant": "Premium", "price": 18500, "driveaway": false, "km": 30099, "suburb": "Ringwood", "zone": "ringwood", "note": "6th week unchanged — haggle candidate", "atId": 15245346, "verified": false, "slug": "gwm/haval-jolion", "warranty": "7yr/unlimited km warranty to ~2030 — transfer confirmed in dealer practice, policy wording unconfirmed."},
+  {"yr": 2024, "make": "GWM", "model": "Haval Jolion", "variant": "Premium", "price": 19490, "driveaway": true, "km": 60437, "suburb": "Coburg North", "zone": "coburg-north", "note": "Carryover", "atId": 15127391, "verified": false, "slug": "gwm/haval-jolion", "warranty": "7yr/unlimited km warranty to ~2031 — transfer confirmed in dealer practice, policy wording unconfirmed."},
+  {"yr": 2024, "make": "GWM", "model": "Haval Jolion", "variant": "Premium", "price": 19690, "driveaway": false, "km": 7603, "suburb": "Altona North", "zone": "altona-north", "note": "−$200; near-new km", "atId": 15186280, "verified": false, "slug": "gwm/haval-jolion", "warranty": "7yr/unlimited km warranty to ~2031 — transfer confirmed in dealer practice, policy wording unconfirmed."},
+  {"yr": 2025, "make": "GWM", "model": "Haval Jolion", "variant": "Premium", "price": 19690, "driveaway": false, "km": 26324, "suburb": "Altona North", "zone": "altona-north", "note": "NEW", "atId": 15279909, "verified": false, "slug": "gwm/haval-jolion", "warranty": "7yr/unlimited km warranty to ~2032 — transfer confirmed in dealer practice, policy wording unconfirmed."},
+  {"yr": 2023, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 18789, "driveaway": false, "km": 43489, "suburb": "Altona North", "zone": "altona-north", "note": "Cut −$600 — cheapest 2023 Venue", "atId": 15115986, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2028."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 17990, "driveaway": false, "km": 22368, "suburb": "Altona North", "zone": "altona-north", "note": "NEW in table — page shows large price variance, verify with dealer", "atId": 15167829, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 17990, "driveaway": false, "km": 24539, "suburb": "Altona North", "zone": "altona-north", "note": "Price-variance caveat — verify", "atId": 15175379, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 17990, "driveaway": false, "km": 26529, "suburb": "Altona North", "zone": "altona-north", "note": "Price-variance caveat — verify", "atId": 15177091, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 18190, "driveaway": false, "km": 20723, "suburb": "Altona North", "zone": "altona-north", "note": "NEW — price-variance caveat", "atId": 15154901, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 18490, "driveaway": false, "km": 26808, "suburb": "Altona North", "zone": "altona-north", "note": "Price-variance caveat", "atId": 15156400, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 18990, "driveaway": false, "km": 25176, "suburb": "Altona North", "zone": "altona-north", "note": "NEW — price-variance caveat", "atId": 15154963, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 19490, "driveaway": false, "km": 26493, "suburb": "Altona North", "zone": "altona-north", "note": "Price-variance caveat", "atId": 15116660, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 20090, "driveaway": false, "km": 24156, "suburb": "Altona North", "zone": "altona-north", "note": "Carryover", "atId": 15113673, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 20490, "driveaway": false, "km": 27201, "suburb": "Altona North", "zone": "altona-north", "note": "Carryover", "atId": 15147071, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2024, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 20500, "driveaway": true, "km": 14990, "suburb": "Essendon Fields", "zone": "essendon-fields", "note": "~6th week on market", "atId": 14797243, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2029."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 20690, "driveaway": false, "km": 21844, "suburb": "Altona North", "zone": "altona-north", "note": "Carryover", "atId": 15173616, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2024, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 20950, "driveaway": true, "km": 30414, "suburb": "Elsternwick", "zone": "elsternwick", "note": "NEW", "atId": 15283599, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2029."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 20990, "driveaway": true, "km": 22789, "suburb": "Altona North", "zone": "altona-north", "note": "Carryover", "atId": 15140926, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2023, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 21190, "driveaway": false, "km": 34314, "suburb": "Altona North", "zone": "altona-north", "note": "ANCAP rating expired Dec 2025", "atId": 15195384, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2028."},
+  {"yr": 2025, "make": "Hyundai", "model": "Venue", "variant": "Active", "price": 21800, "driveaway": true, "km": 12951, "suburb": "Essendon Fields", "zone": "essendon-fields", "note": "Carryover", "atId": 15264895, "verified": false, "slug": "hyundai/venue", "warranty": "5yr/unlimited Hyundai warranty to ~2030."},
+  {"yr": 2025, "make": "Chery", "model": "Tiggo 4 Pro", "variant": "Ultimate", "price": 21790, "driveaway": false, "km": 13361, "suburb": "Altona North", "zone": "altona-north", "note": "Unchanged — near-new Chery in bracket", "atId": 15189704, "verified": false, "slug": "chery/tiggo-4-pro", "warranty": "7yr warranty to ~2032 — transferability unconfirmed, get in writing."},
+  {"yr": 2024, "make": "Chery", "model": "Omoda 5", "variant": "BX", "price": 21990, "driveaway": false, "km": 31980, "suburb": "Altona North", "zone": "altona-north", "note": "Unchanged", "atId": 15243699, "verified": false, "slug": "chery/omoda-5", "warranty": "7yr warranty to ~2031 — transferability unconfirmed, get in writing."},
+  {"yr": 2023, "make": "Chery", "model": "Omoda 5", "variant": "EX", "price": 17990, "driveaway": false, "km": 156199, "suburb": "Coburg North", "zone": "coburg-north", "note": "", "atId": 15206478, "verified": false, "slug": "chery/omoda-5", "warranty": "7yr warranty likely voided/complicated at this mileage — ex-fleet suspect.", "avoid": true}
+]
+//==LISTINGS_DATA_END==
+  ;
+
+  var CARS_T10 = [
+    { model:'2021 MG ZS Excite', price:'~A$14,555', note:'7yr warranty to ~2028, ~2 yrs remaining' },
+    { model:'2020–21 GWM Haval Jolion', price:'market varies', note:'7yr warranty to ~2027–28, ~1–2 yrs remaining' },
+    { model:'2018–19 Mazda CX-3 / Hyundai Kona class', price:'market varies', note:'original 5yr warranty already expired by 2026' }
+  ];
+
+  var BRANDS = [
+    { name:'MG', who:'Historic British badge, owned since 2007 by SAIC (Shanghai, China’s largest automaker). Top-10 seller in Australia.', us:'US analogue: Kia circa 2012 — cheap, long warranty, improving each generation. Not sold in the US.', warranty:'7yr/unlimited km (MY23). Transfers to second owners if the service schedule was kept — verify the logbook.', ancap:'5★ (2019-era protocol, petrol ZS)', servicing:'~A$284/yr capped-price', issues:'Infotainment / electrical niggles reported.', resale:'Dollar retention looks high only because the car was cheap when new.' },
+    { name:'GWM Haval', who:'Great Wall Motor is China’s largest SUV/ute maker; Haval is its SUV brand.', us:'US analogue: value-brand Mitsubishi positioning with flashier tech. Not sold in the US.', warranty:'7yr/unlimited km. Transfer confirmed in dealer practice — policy wording UNCONFIRMED.', ancap:'5★ (2021)', servicing:'~A$310/service', issues:'Real clusters reported: hesitant dual-clutch transmission, lane-keep faults, 360° camera freezes, tailgate water leaks.', resale:'Limited long-run local data; treat conservatively.' },
+    { name:'Chery', who:'China’s largest vehicle exporter; re-entered Australia in 2023 (Omoda 5, Tiggo 4).', us:'US analogue: Hyundai in 1990 — aggressive pricing, unproven long-term. Not sold in the US.', warranty:'7yr warranty. Transferability UNCONFIRMED — get it in writing before buying used.', ancap:'5★ (2022)', servicing:'~A$280–299/yr', issues:'CarsGuide calls it "an unknown quantity" — thin reliability data.', resale:'Unsettled — same-year cars span A$18,990–22,790.' },
+    { name:'Mahindra', who:'Indian maker; XUV 3XO starts from A$23,990 new.', us:'Not sold in the US; thin dealer network in Australia, niche player.', warranty:'Check current model-year terms directly — thin network means less secondhand data.', ancap:'Varies by model — verify per vehicle.', servicing:'Limited network; factor travel time to a dealer.', issues:'Too new to Australia for a track record.', resale:'Unproven — thin network makes resale slower.' }
+  ];
+  var FAMILIAR = [
+    { name:'Mitsubishi ASX (2023+)', body:'A rebadged Renault Captur under the skin. ANCAP 4★. Warranty is 10yr/200,000km <strong>only</strong> if serviced at Mitsubishi dealers — otherwise 5yr/100k. But it has the clearest transfer rule of any brand here: the warranty follows the car.' },
+    { name:'Hyundai Venue', body:'5yr manufacturer warranty. ANCAP 4★ rating <strong>expired December 2025</strong> — treat the safety rating as dated, not current, when comparing to newer entrants.' }
+  ];
+
+  var PROVIDERS = [
+    { rank:1, name:'Carbar', fit:'CONDITIONAL / BEST FIT', fitClass:'fit-best',
+      body:'Port Melbourne hub, free delivery ≤50km CBD. No credit check — affordability assessed via 90 days of bank statements (US accounts OK per policy wording — explicitly fits a US-funded arrival). No joining fee; bond amount UNCONFIRMED; 1.7% card surcharge; A$199 cancel-after-approval fee. Km 384/wk, A$0.40/km over. Damage excess A$3,000–5,000 (high — no reduction add-on found). No minimum term, 2 weeks notice, free swap. Founded 2016, IAG majority-owned since 2019.',
+      caution:'ProductReview 2.9/5 — hidden-fee and excess disputes.',
+      unconfirmed:'Bond amount, IDP requirement.',
+      verdict:'Best documented fit — confirm bond amount and IDP requirement by phone before relying on it.',
+      vehicles: [ {name:'2023 Hyundai Venue', weekly:245, monthly:1062}, {name:'2025 Mitsubishi Outlander', weekly:240, monthly:1040}, {name:'2023 Hyundai Tucson', weekly:275, monthly:1192} ] },
+    { rank:2, name:'Karmo', fit:'CONDITIONAL', fitClass:'fit-ok',
+      body:'Airport West hub (covers Greater Melbourne / Geelong / Mornington). "No traditional credit check." $0 signup; bond A$500–1,500 refundable + 2 weeks upfront. Km 385/wk, ~$0.30/km over. Excess ~$1,000 minimum (unconfirmed), reduction add-on exists. <strong>120-day minimum term in Melbourne</strong>, 30 days notice. Australia’s largest platform; VW Financial Services + Toyota Finance debt facility; Trustindex 4.8/5 (1,482 reviews).',
+      caution:null,
+      unconfirmed:'Whether US-only bank statements satisfy their income-proof wording (assumes AU payslips), and US-license/IDP policy — call before relying on this.',
+      verdict:'Strongest company on paper — two unknowns to clear by phone before relying on it.',
+      vehicles: [ {name:'Renault Koleos', weekly:250, monthly:1083}, {name:'Chery Tiggo 4', weekly:255, monthly:1105}, {name:'Hyundai Kona', weekly:260, monthly:1127} ], vehNote:'Model years unconfirmed 2023+' },
+    { rank:3, name:'Alpha FlexiDrive', fit:'CONDITIONAL', fitClass:'fit-ok',
+      body:'Tullamarine (airport) pickup. Pricing not published — call for a quote. Overseas license needs an IDP or a certified translation. Ages 25–75. Bond required, amount unpublished; 1.65% card surcharge; damage excess A$5,000 default (reducible via a paid add-on). ~1,200 km/mo base. 28 days cancel notice. Has a manual-approval path using bank statements. Parent Alpha Car Hire ~19 years old, 4.8/5 (3,959 reviews, whole business).',
+      caution:'Least documented of the three — phone-first, expect to call rather than book online.',
+      unconfirmed:'Pricing, excess-reduction cost.',
+      verdict:'Solid third option; phone-first.',
+      vehicles: null }
+  ];
+  var NOT_VIABLE = [
+    { name:'Motopool', body:'Now Karmo’s backend — apply via Karmo. Its own T&Cs explicitly require an IDP.' },
+    { name:'Simplr', body:'No Melbourne presence; absorbed into Karmo June 2026.' },
+    { name:'GigCar', body:'No real Melbourne presence despite marketing claims; 2018–21 fleet; FAQ pages return 404.' },
+    { name:'Kinto Flex (Toyota)', body:'Day-rate + per-km with ZERO included km — real cost runs 60–150% over budget. Example: Corolla Cross ~A$1,873/mo before km.' },
+    { name:'Splend', body:'Rideshare-driver vehicles only — not a general consumer subscription.' },
+    { name:'Uber Carshare', body:'Defunct as of 2024 — no longer operating.' },
+    { name:'Europcar SuperFlex', body:'Business/ABN-only — not available to an individual without an Australian business.' }
+  ];
+  var FALLBACKS = [
+    { name:'Europcar standard rental (month-to-month)', body:'US license, no IDP, no credit check, A$200 bond on a credit card — but SUV rates likely A$1,300+/mo.' },
+    { name:'Turo monthly', body:'US license, no IDP, no credit check, trip fee removed on monthly bookings, ~45% monthly host discounts. Est. A$1,000–1,500/mo — UNCONFIRMED.' }
+  ];
+
+  var INCLUSIONS = [
+    ['Comprehensive insurance', 'You arrange it — ~A$2,094–2,940/yr (VIC comprehensive avg, 2025); no insurer publishes US-license terms, call to confirm; US no-claims history NOT recognized', 'Included; damage excess A$1,000–5,000 by provider', 'partial', 'partial'],
+    ['Rego + TAC/CTP', '~A$959/yr', 'Included', 'partial', 'yes'],
+    ['Stamp duty (4.2%)', 'Once, ~A$700–900', 'None', 'partial', 'no'],
+    ['Servicing / maintenance', '~A$284–450/yr capped-price', 'Included', 'partial', 'yes'],
+    ['Tyres', 'Yours — pay when needed', 'Included', 'partial', 'yes'],
+    ['Roadside assist', 'Optional, ~A$120/yr', 'Included', 'partial', 'yes'],
+    ['Tolls', 'Excluded — Melbourne CityLink needs its own account', 'Excluded — same', 'no', 'no'],
+    ['Fuel', 'Excluded', 'Excluded', 'no', 'no'],
+    ['Km limits', 'Unlimited', '~384–385 km/wk, A$0.30–0.40/km over', 'yes', 'partial'],
+    ['Damage excess', 'Your policy excess ~A$800, plus a possible A$500 inexperienced-driver loading', 'A$1,000–5,000 per incident; reduction add-ons vary by provider', 'partial', 'partial'],
+    ['Asset at end', 'Resale value', 'None', 'yes', 'no'],
+    ['Upfront cash', 'Price + ~6% on-roads', 'Bond A$500–1,500 + ~2 weeks', 'partial', 'partial'],
+    ['Exit', 'Private sale, 4–8 week runway, −10–15% if rushed', '2 weeks–30 days notice; Karmo has a 120-day minimum term', 'partial', 'partial'],
+    ['Credit / income checks', 'None needed if paying cash', 'None to a soft check, provider-dependent — see Subscriptions tab', 'yes', 'yes']
+  ];
+
+  // ============================================================
+  // STATE
+  // ============================================================
+  var state = {
+    tierId: 't12_5',
+    customUsd: 12500,
+    duration: 36,
+    currency: 'AUD',
+    showAllTiers: false,
+    activeTab: 'compare',
+    fxTouched: false,
+    fxLive: { attempted: false, success: false, rate: null },
+    overrides: { purchase: null, resale36: null, insurance: null, service: null, rego: null, subMonthly: null, subUpfront: null, fx: null, novatedMonthly: null },
+    filters: { brand: 'any', body: 'suv', maxPrice: null, maxKm: 'any', yearMin: 2023 }
+  };
+
+  var DEFAULTS = { insurance: 2100, service: 1000, rego: 959, subMonthly: 1050, subUpfront: 500, fx: 1.43, surcharge: 0.017, haircut: 0.75 };
+
+  function tier() {
+    if (state.tierId === 'custom') {
+      var usd = state.customUsd || 12500;
+      var fx = FX();
+      var purchase = Math.min(usd * fx, CUSTOM_PURCHASE_CAP);
+      var resale = purchase * 0.53;
+      return { id: 'custom', usd: usd, purchase: purchase, resale36: resale, label: 'Custom budget — purchase interpolated at US$' + Math.round(usd).toLocaleString('en-US') + ' × ' + fx.toFixed(2) + ', resale modeled at 53% residual' };
+    }
+    return TIERS[state.tierId];
+  }
+  function tierName(id) {
+    if (id === 'custom') return 'Custom (US$' + Math.round(state.customUsd || 12500).toLocaleString('en-US') + ')';
+    return TIER_NAMES[id];
+  }
+  function FX() { return state.overrides.fx != null ? state.overrides.fx : DEFAULTS.fx; }
+  function purchasePrice() { return state.overrides.purchase != null ? state.overrides.purchase : tier().purchase; }
+  function resale36Val() { return state.overrides.resale36 != null ? state.overrides.resale36 : tier().resale36; }
+  function insuranceAnnual() { return state.overrides.insurance != null ? state.overrides.insurance : DEFAULTS.insurance; }
+  function serviceAnnual() { return state.overrides.service != null ? state.overrides.service : DEFAULTS.service; }
+  function regoAnnual() { return state.overrides.rego != null ? state.overrides.rego : DEFAULTS.rego; }
+  function annualCosts() { return insuranceAnnual() + serviceAnnual() + regoAnnual(); }
+  function subMonthly() { return state.overrides.subMonthly != null ? state.overrides.subMonthly : DEFAULTS.subMonthly; }
+  function subUpfront() { return state.overrides.subUpfront != null ? state.overrides.subUpfront : DEFAULTS.subUpfront; }
+
+  // ============================================================
+  // MODEL
+  // ============================================================
+  function buyParams(tierId) {
+    var purchase, resale;
+    if (tierId === state.tierId) { purchase = purchasePrice(); resale = resale36Val(); }
+    else { purchase = TIERS[tierId].purchase; resale = TIERS[tierId].resale36; }
+    var haircut = DEFAULTS.haircut;
+    var floorVal = purchase * haircut;
+    var decay = Math.pow(resale / floorVal, 1 / 36);
+    return { purchase: purchase, resale36: resale, haircut: haircut, floorVal: floorVal, decay: decay };
+  }
+  function resaleValueFor(bp, t) { return bp.floorVal * Math.pow(bp.decay, t); }
+  function upfrontFeesFor(bp) { return 0.042 * bp.purchase + 46 + 2 + 250; }
+
+  function buyNetCost(tierId, t) {
+    var bp = buyParams(tierId);
+    var ac = annualCosts();
+    return bp.purchase + upfrontFeesFor(bp) + (ac / 12) * t - resaleValueFor(bp, t);
+  }
+  function subNetCost(t) {
+    return subUpfront() + subMonthly() * (1 + DEFAULTS.surcharge) * t;
+  }
+  function effMonthly(netFn, t) { return t > 0 ? netFn(t) / t : netFn(0.0001); }
+
+  function findBreakeven(tierId) {
+    var step = 0.05, prevT = 0, prevDiff = buyNetCost(tierId, 0) - subNetCost(0);
+    for (var t = step; t <= 60; t += step) {
+      var diff = buyNetCost(tierId, t) - subNetCost(t);
+      if (prevDiff > 0 && diff <= 0) {
+        var frac = prevDiff / (prevDiff - diff);
+        return prevT + frac * (t - prevT);
+      }
+      prevT = t; prevDiff = diff;
+    }
+    return null;
+  }
+
+  // ============================================================
+  // FORMATTING
+  // ============================================================
+  function fmtMoney(aud, currency) {
+    var symbol = currency === 'AUD' ? 'A$' : 'US$';
+    var value = currency === 'AUD' ? aud : aud / FX();
+    var rounded = Math.round(value);
+    return symbol + rounded.toLocaleString('en-US');
+  }
+  function fmtAxis(aud, currency) {
+    var symbol = currency === 'AUD' ? 'A$' : 'US$';
+    var value = currency === 'AUD' ? aud : aud / FX();
+    if (Math.abs(value) >= 1000) return symbol + Math.round(value / 1000) + 'K';
+    return symbol + Math.round(value);
+  }
+  function fmtRange(low, high, currency) { return fmtMoney(low, currency) + '–' + fmtMoney(high, currency); }
+  function fmtFromUSD(usd, currency) {
+    if (currency === 'USD') return 'US$' + Math.round(usd).toLocaleString('en-US');
+    return 'A$' + Math.round(usd * FX()).toLocaleString('en-US');
+  }
+  function fmtMonths(m) {
+    if (m == null) return 'never within horizon';
+    return '~' + (Math.round(m * 10) / 10) + ' months';
+  }
+
+  function updateMoneySpans() {
+    var i, el, aud;
+    var plain = document.querySelectorAll('.money');
+    for (i = 0; i < plain.length; i++) { el = plain[i]; aud = parseFloat(el.getAttribute('data-aud')); el.textContent = fmtMoney(aud, state.currency); }
+    var ranges = document.querySelectorAll('.money-range');
+    for (i = 0; i < ranges.length; i++) { el = ranges[i]; el.textContent = fmtRange(parseFloat(el.getAttribute('data-low')), parseFloat(el.getAttribute('data-high')), state.currency); }
+    var usdNative = document.querySelectorAll('.money-usd');
+    for (i = 0; i < usdNative.length; i++) { el = usdNative[i]; el.textContent = fmtFromUSD(parseFloat(el.getAttribute('data-usd')), state.currency); }
+  }
+
+  // ============================================================
+  // TAB SWITCHING
+  // ============================================================
+  function switchTab(tabId) {
+    state.activeTab = tabId;
+    var panels = document.querySelectorAll('.tab-panel');
+    for (var i = 0; i < panels.length; i++) {
+      panels[i].classList.toggle('hidden', panels[i].id !== 'tab-' + tabId);
+    }
+    var btns = document.querySelectorAll('.tab-btn');
+    for (i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('active', btns[i].getAttribute('data-tab') === tabId);
+    }
+    if (tabId === 'compare') renderChart();
+  }
+
+  // ============================================================
+  // STAT TILES + BREAKEVEN BANNER
+  // ============================================================
+  function updateStatTiles() {
+    var t = state.duration;
+    var buy = buyNetCost(state.tierId, t);
+    var sub = subNetCost(t);
+    var diff = sub - buy;
+    document.getElementById('tileBuyValue').textContent = fmtMoney(buy, state.currency);
+    document.getElementById('tileBuySub').textContent = tierName(state.tierId) + ' · ~' + fmtMoney(effMonthly(function (tt) { return buyNetCost(state.tierId, tt); }, t), state.currency) + '/mo effective';
+    document.getElementById('tileSubValue').textContent = fmtMoney(sub, state.currency);
+    document.getElementById('tileSubSub').textContent = '~' + fmtMoney(effMonthly(subNetCost, t), state.currency) + '/mo effective';
+    document.getElementById('tileDiffValue').textContent = (diff >= 0 ? '' : '−') + fmtMoney(Math.abs(diff), state.currency);
+    document.getElementById('tileDiffSub').textContent = diff >= 0 ? 'Buy is cheaper at ' + t + ' months' : 'Subscribe is cheaper at ' + t + ' months';
+
+    var be = findBreakeven(state.tierId);
+    var recEl = document.getElementById('tileRecValue');
+    var recSub = document.getElementById('tileRecSub');
+    var recLine;
+    if (be == null) {
+      recEl.textContent = 'Subscribe';
+      recSub.textContent = 'Buying never catches up within the modeled horizon at these assumptions.';
+    } else if (t < be - 3) {
+      recEl.textContent = 'Subscribe';
+      recSub.textContent = 'Stay is well short of the ' + fmtMonths(be) + ' breakeven.';
+    } else if (t <= be + 3) {
+      recEl.textContent = 'Hybrid bridge → Buy';
+      recSub.textContent = 'Right at the breakeven (' + fmtMonths(be) + ') — subscribe short-term, then buy.';
+    } else {
+      recEl.textContent = 'Buy';
+      recSub.textContent = 'Well past the ' + fmtMonths(be) + ' breakeven — buying wins on total cost.';
+    }
+
+    var banner = document.getElementById('breakevenBanner');
+    banner.innerHTML = 'Breakeven for ' + tierName(state.tierId) + ' — <strong>' + fmtMonths(be) + '</strong> — buying overtakes subscribing on cumulative cost at that point.';
+  }
+
+  // ============================================================
+  // COST COMPOSITION (stacked bars)
+  // ============================================================
+  var STACK_CATS = [
+    { key: 'dep', label: 'Net depreciation', color: 'var(--series-1)', side: 'buy' },
+    { key: 'stamp', label: 'Stamp duty + fees', color: 'var(--series-2)', side: 'buy' },
+    { key: 'ins', label: 'Insurance', color: 'var(--series-3)', side: 'buy' },
+    { key: 'rego', label: 'Rego + TAC', color: 'var(--series-4)', side: 'buy' },
+    { key: 'svc', label: 'Servicing / tyres', color: 'var(--series-5)', side: 'buy' },
+    { key: 'pay', label: 'Payments', color: 'var(--series-6)', side: 'sub' },
+    { key: 'upf', label: 'Upfront / bond', color: 'var(--series-7)', side: 'sub' },
+    { key: 'surc', label: 'Card surcharge', color: 'var(--series-8)', side: 'sub' }
+  ];
+
+  function computeStacks(t) {
+    var bp = buyParams(state.tierId);
+    var dep = bp.purchase - resaleValueFor(bp, t);
+    var stamp = upfrontFeesFor(bp);
+    var ins = insuranceAnnual() * t / 12;
+    var rego = regoAnnual() * t / 12;
+    var svc = serviceAnnual() * t / 12;
+    var pay = subMonthly() * t;
+    var upf = subUpfront();
+    var surc = subMonthly() * t * DEFAULTS.surcharge;
+    return {
+      buy: [ {c:'dep', v:dep}, {c:'stamp', v:stamp}, {c:'ins', v:ins}, {c:'rego', v:rego}, {c:'svc', v:svc} ],
+      sub: [ {c:'pay', v:pay}, {c:'upf', v:upf}, {c:'surc', v:surc} ]
+    };
+  }
+
+  function catMeta(key) { for (var i = 0; i < STACK_CATS.length; i++) if (STACK_CATS[i].key === key) return STACK_CATS[i]; return null; }
+
+  function renderStacks() {
+    var t = state.duration;
+    document.getElementById('compDurationLabel').textContent = t;
+    var stacks = computeStacks(t);
+    var maxTotal = Math.max(sumStack(stacks.buy), sumStack(stacks.sub));
+    var wrap = document.getElementById('stackWrap');
+    wrap.innerHTML = '';
+    wrap.appendChild(buildStackRow('Buy', stacks.buy, maxTotal));
+    wrap.appendChild(buildStackRow('Subscribe', stacks.sub, maxTotal));
+
+    var legend = document.getElementById('stackLegend');
+    legend.innerHTML = '';
+    for (var i = 0; i < STACK_CATS.length; i++) {
+      var cat = STACK_CATS[i];
+      var item = document.createElement('div');
+      item.className = 'legend-item';
+      var sw = document.createElement('span'); sw.className = 'legend-swatch'; sw.style.background = cat.color;
+      item.appendChild(sw);
+      var txt = document.createElement('span'); txt.textContent = cat.label;
+      item.appendChild(txt);
+      legend.appendChild(item);
+    }
+  }
+  function sumStack(segs) { var s = 0; for (var i = 0; i < segs.length; i++) s += Math.max(0, segs[i].v); return s; }
+
+  function buildStackRow(label, segs, maxTotal) {
+    var row = document.createElement('div');
+    row.className = 'stack-row';
+    var lbl = document.createElement('div'); lbl.className = 'stack-label'; lbl.textContent = label;
+    row.appendChild(lbl);
+    var track = document.createElement('div'); track.className = 'stack-track';
+    var total = sumStack(segs);
+    for (var i = 0; i < segs.length; i++) {
+      var seg = segs[i];
+      var v = Math.max(0, seg.v);
+      if (v <= 0) continue;
+      var pct = maxTotal > 0 ? (v / maxTotal) * 100 : 0;
+      var meta = catMeta(seg.c);
+      var el = document.createElement('div');
+      el.className = 'stack-seg';
+      el.style.width = pct + '%';
+      el.style.background = meta.color;
+      el.title = meta.label + ': ' + fmtMoney(v, state.currency);
+      track.appendChild(el);
+    }
+    row.appendChild(track);
+    var totalEl = document.createElement('div'); totalEl.className = 'stack-total'; totalEl.textContent = fmtMoney(total, state.currency);
+    row.appendChild(totalEl);
+    return row;
+  }
+
+  // ============================================================
+  // INCLUSIONS MATRIX
+  // ============================================================
+  function glyphFor(kind) {
+    if (kind === 'yes') return '<span class="glyph-yes">✓</span>';
+    if (kind === 'no') return '<span class="glyph-no">✗</span>';
+    return '<span class="glyph-partial">$</span>';
+  }
+  function renderInclusions() {
+    var tbody = document.querySelector('#inclusionsTable tbody');
+    tbody.innerHTML = '';
+    for (var i = 0; i < INCLUSIONS.length; i++) {
+      var row = INCLUSIONS[i];
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td><strong>' + row[0] + '</strong></td><td>' + glyphFor(row[3]) + ' ' + row[1] + '</td><td>' + glyphFor(row[4]) + ' ' + row[2] + '</td>';
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ============================================================
+  // CHART
+  // ============================================================
+  var svgNS = 'http://www.w3.org/2000/svg';
+  var W = 920, H = 420, M = { top: 24, right: 132, bottom: 44, left: 66 };
+  var plotW = W - M.left - M.right, plotH = H - M.top - M.bottom;
+  var crosshairRef = null, scalesRef = null, activeSeriesRef = null;
+  var chartNarrow = false;
+
+  // Recompute the chart's viewBox for the current container width instead of relying purely on the
+  // browser's CSS scale-to-fit. A fixed 920x420 viewBox scaled down to a ~330px-wide phone shrinks
+  // 11px SVG text to ~4px on screen (illegible). Re-authoring the viewBox close to the real rendered
+  // width keeps text near its authored point size. On narrow layouts the right-margin end-of-line
+  // labels are dropped (redundant with the HTML legend + tap tooltip) to give the plot area room.
+  function updateChartDims() {
+    var shell = document.querySelector('.chart-shell');
+    var containerW = (shell && shell.clientWidth) || 920;
+    chartNarrow = containerW < 640;
+    if (chartNarrow) {
+      W = Math.max(300, Math.round(containerW));
+      H = Math.round(W * 0.62);
+      M = { top: 18, right: 14, bottom: 34, left: 52 };
+    } else {
+      W = 920; H = 420; M = { top: 24, right: 132, bottom: 44, left: 66 };
+    }
+    plotW = W - M.left - M.right;
+    plotH = H - M.top - M.bottom;
+  }
+
+  function buySeriesPoints(tierId) {
+    var pts = [];
+    for (var t = 0; t <= 48; t++) pts.push({ t: t, cost: buyNetCost(tierId, t) });
+    return pts;
+  }
+  function subSeriesPoints() {
+    var pts = [];
+    for (var t = 0; t <= 48; t++) pts.push({ t: t, cost: subNetCost(t) });
+    return pts;
+  }
+
+  function svgEl(tag, attrs) {
+    var el = document.createElementNS(svgNS, tag);
+    for (var k in attrs) { if (attrs.hasOwnProperty(k)) el.setAttribute(k, attrs[k]); }
+    return el;
+  }
+  function resolveColor(cssVarExpr) {
+    var m = /var\((--[a-z0-9-]+)\)/.exec(cssVarExpr);
+    if (!m) return cssVarExpr;
+    return getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim();
+  }
+
+  function renderChart() {
+    var svg = document.getElementById('costChart');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    updateChartDims();
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+    var buyMain = buySeriesPoints(state.tierId);
+    var sub = subSeriesPoints();
+    var otherTiers = TIER_ORDER.filter(function (id) { return id !== state.tierId; });
+
+    var allSeries = [
+      { key: 'buy', short: 'Buy — ' + tierName(state.tierId), color: 'var(--series-1)', points: buyMain, dashed: false, primary: true },
+      { key: 'sub', short: 'Subscribe', color: 'var(--series-2)', points: sub, dashed: false, primary: true }
+    ];
+    if (state.showAllTiers) {
+      otherTiers.forEach(function (id) {
+        allSeries.push({ key: 'buy-' + id, short: 'Buy — ' + tierName(id), color: 'var(--series-1)', points: buySeriesPoints(id), dashed: true, primary: false });
+      });
+    }
+    // ADDED 26 Jul 2026: optional novated-lease line — only appears once the user types a real quote.
+    var novMonthly = state.overrides.novatedMonthly;
+    if (novMonthly != null && novMonthly > 0) {
+      var novPts = [];
+      for (var nt = 0; nt <= 48; nt++) novPts.push({ t: nt, cost: novMonthly * nt });
+      allSeries.push({ key: 'novated', short: 'Novated lease (your quote)', color: 'var(--series-9)', points: novPts, dashed: false, primary: true });
+    }
+    activeSeriesRef = allSeries;
+
+    var yMax = 0, i, j;
+    for (i = 0; i < allSeries.length; i++) for (j = 0; j < allSeries[i].points.length; j++) if (allSeries[i].points[j].cost > yMax) yMax = allSeries[i].points[j].cost;
+    yMax = Math.ceil(yMax / 5000) * 5000;
+    var yMin = 0;
+
+    function xScale(t) { return M.left + (t / 48) * plotW; }
+    function yScale(c) { return M.top + plotH - ((c - yMin) / (yMax - yMin)) * plotH; }
+    scalesRef = { xScale: xScale, yScale: yScale, yMax: yMax, yMin: yMin };
+
+    var yTickCount = 5;
+    for (i = 0; i <= yTickCount; i++) {
+      var val = yMin + (yMax - yMin) * i / yTickCount;
+      var y = yScale(val);
+      svg.appendChild(svgEl('line', { x1: M.left, x2: W - M.right, y1: y, y2: y, stroke: 'var(--gridline)', 'stroke-width': '1' }));
+      var lbl = svgEl('text', { x: M.left - 8, y: y + 4, 'text-anchor': 'end', class: 'axis-label' });
+      lbl.textContent = fmtAxis(val, state.currency);
+      svg.appendChild(lbl);
+    }
+    for (var t2 = 0; t2 <= 48; t2 += 6) {
+      var x2 = xScale(t2);
+      svg.appendChild(svgEl('line', { x1: x2, x2: x2, y1: M.top + plotH, y2: M.top + plotH + 4, stroke: 'var(--baseline)' }));
+      var xlbl = svgEl('text', { x: x2, y: M.top + plotH + 18, 'text-anchor': 'middle', class: 'axis-label' });
+      xlbl.textContent = t2 + 'm';
+      svg.appendChild(xlbl);
+    }
+    svg.appendChild(svgEl('line', { x1: M.left, x2: W - M.right, y1: M.top + plotH, y2: M.top + plotH, stroke: 'var(--baseline)' }));
+
+    var endLabels = [];
+    for (i = 0; i < allSeries.length; i++) {
+      var s = allSeries[i];
+      var d = '';
+      for (j = 0; j < s.points.length; j++) {
+        var p = s.points[j];
+        d += (j === 0 ? 'M' : 'L') + xScale(p.t).toFixed(2) + ',' + yScale(p.cost).toFixed(2) + ' ';
+      }
+      var lineAttrs = { d: d, fill: 'none', stroke: s.color, 'stroke-width': s.primary ? '2' : '1.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' };
+      if (s.dashed) { lineAttrs['stroke-dasharray'] = '6,4'; lineAttrs['opacity'] = '0.55'; }
+      svg.appendChild(svgEl('path', lineAttrs));
+
+      var last = s.points[s.points.length - 1];
+      var cx = xScale(last.t), cy = yScale(last.cost);
+      if (s.primary) {
+        svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: '6', fill: 'var(--surface-1)' }));
+        svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: '4', fill: s.color }));
+        endLabels.push({ y: cy, text: s.short + ' · ' + fmtMoney(last.cost, state.currency) });
+      }
+    }
+
+    if (!chartNarrow) {
+      endLabels.sort(function (a, b) { return a.y - b.y; });
+      var minLabelGap = 14;
+      for (i = 1; i < endLabels.length; i++) {
+        if (endLabels[i].y - endLabels[i - 1].y < minLabelGap) endLabels[i].y = endLabels[i - 1].y + minLabelGap;
+      }
+      for (i = 0; i < endLabels.length; i++) {
+        var endLabel = svgEl('text', { x: W - 5, y: endLabels[i].y + 4, 'text-anchor': 'end', class: 'end-label' });
+        endLabel.textContent = endLabels[i].text;
+        svg.appendChild(endLabel);
+      }
+    }
+
+    var durX = xScale(state.duration);
+    svg.appendChild(svgEl('line', { x1: durX, x2: durX, y1: M.top, y2: M.top + plotH, stroke: 'var(--text-secondary)', 'stroke-width': '1.5' }));
+    var durLabel = svgEl('text', { x: durX, y: M.top - 8, 'text-anchor': 'middle', class: 'marker-label' });
+    durLabel.textContent = 'Selected: ' + state.duration + 'mo';
+    svg.appendChild(durLabel);
+
+    var be = findBreakeven(state.tierId);
+    if (be != null && be <= 48) {
+      var mx = xScale(be), my = yScale(subNetCost(be));
+      svg.appendChild(svgEl('circle', { cx: mx, cy: my, r: '6', fill: 'none', stroke: 'var(--text-primary)', 'stroke-width': '1.5' }));
+      var beLbl = svgEl('text', { x: mx, y: my - 12, 'text-anchor': 'middle', class: 'be-label' });
+      beLbl.textContent = fmtMonths(be) + ' breakeven';
+      svg.appendChild(beLbl);
+    }
+
+    var crosshair = svgEl('line', { y1: M.top, y2: M.top + plotH, stroke: 'var(--text-muted)', 'stroke-width': '1' });
+    crosshair.style.display = 'none';
+    svg.appendChild(crosshair);
+    crosshairRef = crosshair;
+
+    var overlay = svgEl('rect', { x: M.left, y: M.top, width: plotW, height: plotH, fill: 'transparent' });
+    overlay.style.cursor = 'crosshair';
+    overlay.style.pointerEvents = 'all';
+    svg.appendChild(overlay);
+    overlay.addEventListener('pointermove', handlePointerMove);
+    overlay.addEventListener('pointerleave', function () {
+      crosshair.style.display = 'none';
+      document.getElementById('chartTooltip').style.display = 'none';
+    });
+
+    renderChartLegend(allSeries);
+  }
+
+  function renderChartLegend(series) {
+    var legend = document.getElementById('chartLegend');
+    legend.innerHTML = '';
+    var seen = {};
+    for (var i = 0; i < series.length; i++) {
+      var s = series[i];
+      if (seen[s.short]) continue;
+      seen[s.short] = true;
+      var item = document.createElement('div');
+      item.className = 'legend-item';
+      var sw = document.createElement('span');
+      sw.className = 'legend-swatch' + (s.dashed ? ' dashed' : '');
+      if (!s.dashed) sw.style.background = s.color;
+      item.appendChild(sw);
+      var txt = document.createElement('span'); txt.textContent = s.short;
+      item.appendChild(txt);
+      legend.appendChild(item);
+    }
+    var be = document.createElement('div'); be.className = 'legend-item'; be.textContent = '◯ breakeven';
+    legend.appendChild(be);
+  }
+
+  function handlePointerMove(evt) {
+    var svg = document.getElementById('costChart');
+    var rect = svg.getBoundingClientRect();
+    var scaleX = W / rect.width;
+    var mouseX = (evt.clientX - rect.left) * scaleX;
+    var t = Math.round(((mouseX - M.left) / plotW) * 48);
+    t = Math.max(0, Math.min(48, t));
+    var x = scalesRef.xScale(t);
+    crosshairRef.setAttribute('x1', x);
+    crosshairRef.setAttribute('x2', x);
+    crosshairRef.style.display = 'block';
+
+    var tooltip = document.getElementById('chartTooltip');
+    while (tooltip.firstChild) tooltip.removeChild(tooltip.firstChild);
+    var title = document.createElement('div');
+    title.className = 'tt-title';
+    title.textContent = t + ' months';
+    tooltip.appendChild(title);
+    for (var i = 0; i < activeSeriesRef.length; i++) {
+      var s = activeSeriesRef[i];
+      var val = s.points[t].cost;
+      var row = document.createElement('div');
+      row.className = 'tt-row';
+      var key = document.createElement('span');
+      key.className = 'tt-key';
+      key.style.background = resolveColor(s.color);
+      if (s.dashed) key.style.opacity = '0.55';
+      row.appendChild(key);
+      var name = document.createElement('span');
+      name.className = 'tt-name';
+      name.textContent = s.short;
+      row.appendChild(name);
+      var v = document.createElement('span');
+      v.className = 'tt-val';
+      v.textContent = fmtMoney(val, state.currency);
+      row.appendChild(v);
+      tooltip.appendChild(row);
+    }
+    tooltip.style.display = 'block';
+    var tw = 200;
+    var leftPx = evt.clientX - rect.left + 14;
+    if (leftPx + tw > rect.width) leftPx = evt.clientX - rect.left - tw - 14;
+    tooltip.style.left = leftPx + 'px';
+    var topPx = evt.clientY - rect.top - 20;
+    if (topPx < 0) topPx = 0;
+    tooltip.style.top = topPx + 'px';
+  }
+
+  function renderChartTable() {
+    var head = document.getElementById('chartTableHead');
+    var otherTiers = state.showAllTiers ? TIER_ORDER.filter(function (id) { return id !== state.tierId; }) : [];
+    head.innerHTML = '<th>Month</th><th class="num">Buy (' + tierName(state.tierId) + ')</th><th class="num">Subscribe</th>' +
+      otherTiers.map(function (id) { return '<th class="num">Buy (' + tierName(id) + ')</th>'; }).join('');
+    var body = document.getElementById('chartTableBody');
+    body.innerHTML = '';
+    for (var t = 0; t <= 48; t += 3) {
+      var tr = document.createElement('tr');
+      var cells = '<td>' + t + ' mo</td><td class="num">' + fmtMoney(buyNetCost(state.tierId, t), state.currency) + '</td><td class="num">' + fmtMoney(subNetCost(t), state.currency) + '</td>';
+      otherTiers.forEach(function (id) { cells += '<td class="num">' + fmtMoney(buyNetCost(id, t), state.currency) + '</td>'; });
+      tr.innerHTML = cells;
+      body.appendChild(tr);
+    }
+  }
+
+  // ============================================================
+  // TAB 2: CARS
+  // ============================================================
+  function currentCapAud() { return tier().usd * FX(); }
+
+  // Card filtering: a blank Max Price means NO price ceiling (truly "any").
+  function filterMaxPrice() { return state.filters.maxPrice != null ? state.filters.maxPrice : Infinity; }
+  // Live-search URLs always need a concrete ceiling: blank falls back to the budget-tier cap.
+  function filterMaxPriceForUrl() { return state.filters.maxPrice != null ? state.filters.maxPrice : Math.round(currentCapAud()); }
+
+  function deepLinkUrl(listing) {
+    if (!listing.atId) return null;
+    if (listing.slug) {
+      return 'https://www.autotrader.com.au/car/' + listing.atId + '/' + listing.slug + '/vic/' + listing.zone + '/suv';
+    }
+    var m = MODEL_SLUG[listing.make];
+    if (!m || !m.modelSlug) return null;
+    return 'https://www.autotrader.com.au/car/' + listing.atId + '/' + m.makeSlug + '/' + m.modelSlug + '/vic/' + listing.zone + '/suv';
+  }
+  function findSimilarUrl(listing) {
+    var m = MODEL_SLUG[listing.make];
+    var makeSlug = m ? m.makeSlug : listing.make.toLowerCase();
+    return 'https://www.autotrader.com.au/for-sale/used/' + makeSlug + '/vic/melbourne';
+  }
+
+  function renderCars() {
+    document.getElementById('carsTierLabel').textContent = tierName(state.tierId);
+    var cap = currentCapAud();
+    document.getElementById('carsCapLabel').textContent = fmtMoney(cap, state.currency);
+    document.getElementById('snapshotBadgeCars').textContent = 'Snapshot: ' + formatAsOf(DATA_ASOF);
+    var grid = document.getElementById('carsGrid');
+    var emptyWrap = document.getElementById('carsEmptyState');
+    grid.innerHTML = '';
+    emptyWrap.innerHTML = '';
+    grid.classList.remove('hidden');
+
+    var sorted = LISTINGS_DATA.slice().sort(function (a, b) { return a.price - b.price; });
+    var anyFits = false;
+    var f = state.filters;
+    var maxPrice = filterMaxPrice();
+    var matchCount = 0;
+
+    sorted.forEach(function (c) {
+      var card = document.createElement('div');
+      card.className = 'car-card';
+      var priceLabel = fmtMoney(c.price, state.currency);
+      if (c.driveaway) priceLabel += ' drive-away';
+      var kmLabel = c.km.toLocaleString('en-US') + ' km';
+      var title = c.yr + ' ' + c.make + ' ' + c.model + ' ' + c.variant;
+
+      var badge;
+      if (c.avoid) {
+        badge = '<span class="badge badge-avoid">AVOID</span>';
+      } else if (c.price <= cap) {
+        badge = '<span class="badge badge-fits">FITS</span>';
+        anyFits = true;
+      } else {
+        badge = '<span class="badge badge-over">OVER</span>';
+      }
+      if (c.verified) badge = '<span style="display:inline-flex;gap:4px;align-items:center;"><span class="badge badge-verified">VERIFIED-LIVE</span>' + badge + '</span>';
+
+      var noteLine = c.note ? '<div style="color:var(--series-1); font-weight:600; font-size:11.5px; margin-top:2px;">' + c.note + (c.avoid ? ' — likely ex-fleet/rental' : '') + '</div>' : (c.avoid ? '<div style="color:#a12727; font-weight:600; font-size:11.5px; margin-top:2px;">Likely ex-fleet/rental — high km for age</div>' : '');
+
+      var deepUrl = deepLinkUrl(c);
+      var simUrl = findSimilarUrl(c);
+      var linkRow = '<div class="deep-link-row">';
+      if (deepUrl) {
+        linkRow += '<a class="deep-link" href="' + deepUrl + '" target="_blank" rel="noopener">View listing ↗</a>';
+        linkRow += '<span class="as-listed-chip">as listed ' + formatAsOf(DATA_ASOF) + ' — may be sold</span>';
+      }
+      linkRow += '<a class="deep-link" href="' + simUrl + '" target="_blank" rel="noopener">Find similar live ↗</a>';
+      linkRow += '</div>';
+
+      card.innerHTML =
+        '<div class="cc-top"><div class="cc-title">' + title + '</div>' + badge + '</div>' +
+        '<div class="cc-price">' + priceLabel + '</div>' +
+        '<div class="cc-meta">' + kmLabel + ' · ' + c.suburb + '</div>' +
+        noteLine +
+        '<div class="cc-warranty">' + c.warranty + '</div>' +
+        linkRow;
+
+      // filter-bar matching (brand / max price / max km / min year); body style doesn't exclude — every
+      // snapshot listing here is already an SUV.
+      var brandMatch = f.brand === 'any' || c.make.toLowerCase() === f.brand;
+      var priceMatch = c.price <= maxPrice;
+      var kmMatch = f.maxKm === 'any' || c.km <= parseInt(f.maxKm, 10);
+      var yearMatch = c.yr >= f.yearMin;
+      var isMatch = brandMatch && priceMatch && kmMatch && yearMatch;
+      card.classList.toggle('hidden', !isMatch);
+      if (isMatch) matchCount++;
+
+      grid.appendChild(card);
+    });
+
+    document.getElementById('filterMatchLine').textContent = matchCount + ' of ' + LISTINGS_DATA.length + ' snapshot cars match';
+
+    if (matchCount === 0) {
+      var noMatch = document.createElement('div');
+      noMatch.className = 'empty-state';
+      noMatch.innerHTML = '<strong>No snapshot cars match these filters.</strong> The snapshot is only ' + LISTINGS_DATA.length + ' cars captured ' + formatAsOf(DATA_ASOF) + ' — use the Search-live buttons above to see the full current market for these exact filters.';
+      emptyWrap.appendChild(noMatch);
+    }
+    if (!anyFits) {
+      var box = document.createElement('div');
+      box.className = 'empty-state';
+      var lines = '<strong>Nothing in the 2023+ listings above fits ' + fmtMoney(cap, state.currency) + '.</strong>At this budget the 2023+ requirement has to be dropped. Realistic pre-2023 examples:<br><br>';
+      CARS_T10.forEach(function (c) { lines += '<div style="margin:4px 0;">' + c.model + ' — ' + c.price + ' <span style="color:var(--text-muted)">(' + c.note + ')</span></div>'; });
+      box.innerHTML = lines;
+      emptyWrap.appendChild(box);
+    }
+
+    renderSearchLinks();
+  }
+
+  // ============================================================
+  // TAB 2: LIVE MARKETPLACE SEARCH LINK BUILDERS
+  // ============================================================
+  function buildAutotraderSearchUrl(f, maxPrice) {
+    if (f.brand !== 'any') {
+      return 'https://www.autotrader.com.au/for-sale/used/' + f.brand + '/vic/melbourne/under-$' + maxPrice + '/over-' + f.yearMin;
+    }
+    if (f.body === 'suv') {
+      return 'https://www.autotrader.com.au/for-sale/used/vic/melbourne/suv/under-$' + maxPrice + '/over-' + f.yearMin;
+    }
+    return 'https://www.autotrader.com.au/for-sale/used/vic/melbourne/under-$' + maxPrice + '/over-' + f.yearMin;
+  }
+  function buildCarsguideSearchUrl(f, maxPrice) {
+    var parts = ['https://www.carsguide.com.au/buy-a-car/used'];
+    if (f.brand !== 'any') parts.push(f.brand);
+    parts.push('vic');
+    parts.push('melbourne-location');
+    if (f.body !== 'any') parts.push(f.body);
+    parts.push('under-$' + maxPrice);
+    if (f.maxKm !== 'any') parts.push('under-' + f.maxKm + 'km');
+    return parts.join('/');
+  }
+  function buildCarsalesSearchUrl(f, maxPrice) {
+    var parts = ['https://www.carsales.com.au/cars'];
+    if (f.brand !== 'any') parts.push(f.brand);
+    parts.push('victoria-state');
+    parts.push('melbourne-region');
+    parts.push('suv-bodystyle');
+    parts.push('under-' + maxPrice);
+    return parts.join('/') + '/';
+  }
+  function buildCarsalesAdvancedUrl(f, maxPrice) {
+    if (f.yearMin <= 2020) return null;
+    var q = '(And.Price.range(0..' + maxPrice + ')._.BodyStyle.SUV._.Year.range(' + f.yearMin + '..)._.(C.State.Victoria._.Region.Melbourne.))';
+    var encoded = q.replace(/\(/g, '%28').replace(/\)/g, '%29');
+    return 'https://www.carsales.com.au/cars/?q=' + encoded;
+  }
+  function buildGumtreeSearchUrl(f) {
+    var parts = ['https://www.gumtree.com.au/s-cars-vans-utes/melbourne'];
+    if (f.brand !== 'any') parts.push('carmake-' + f.brand);
+    parts.push('caryear-' + f.yearMin + '__2026');
+    return parts.join('/') + '/c18320l3001317';
+  }
+
+  function renderSearchLinks() {
+    var f = state.filters;
+    var maxPrice = filterMaxPriceForUrl();
+    var links = [
+      { label: 'Autotrader ↗', href: buildAutotraderSearchUrl(f, maxPrice) },
+      { label: 'CarsGuide ↗', href: buildCarsguideSearchUrl(f, maxPrice) },
+      { label: 'carsales ↗', href: buildCarsalesSearchUrl(f, maxPrice) }
+    ];
+    var carsalesAdv = buildCarsalesAdvancedUrl(f, maxPrice);
+    if (carsalesAdv) links.push({ label: 'carsales (advanced) ↗', href: carsalesAdv, title: 'best-effort — carsales may adjust filters' });
+    links.push({ label: 'Gumtree ↗', href: buildGumtreeSearchUrl(f) });
+
+    var row = document.getElementById('searchLinksRow');
+    row.innerHTML = '';
+    links.forEach(function (l) {
+      var a = document.createElement('a');
+      a.className = 'search-link-btn';
+      a.href = l.href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = l.label;
+      if (l.title) a.title = l.title;
+      row.appendChild(a);
+    });
+  }
+
+  // ============================================================
+  // TAB 3: BRANDS
+  // ============================================================
+  function renderBrands() {
+    var grid = document.getElementById('brandsGrid');
+    grid.innerHTML = '';
+    BRANDS.forEach(function (b) {
+      var card = document.createElement('div');
+      card.className = 'brand-card';
+      card.innerHTML =
+        '<h3>' + b.name + '</h3>' +
+        '<div>' + b.who + '</div>' +
+        '<div class="b-us">' + b.us + '</div>' +
+        '<dl>' +
+        '<dt>Warranty &amp; transfer</dt><dd>' + b.warranty + '</dd>' +
+        '<dt>ANCAP</dt><dd>' + b.ancap + '</dd>' +
+        '<dt>Servicing cost</dt><dd>' + b.servicing + '</dd>' +
+        '<dt>Known issues</dt><dd>' + b.issues + '</dd>' +
+        '<dt>Resale outlook</dt><dd>' + b.resale + '</dd>' +
+        '</dl>';
+      grid.appendChild(card);
+    });
+    var strip = document.getElementById('familiarStrip');
+    strip.innerHTML = '';
+    FAMILIAR.forEach(function (f) {
+      var card = document.createElement('div');
+      card.className = 'brand-card';
+      card.innerHTML = '<h3>' + f.name + '</h3><div>' + f.body + '</div>';
+      strip.appendChild(card);
+    });
+  }
+
+  // ============================================================
+  // TAB 4: SUBSCRIPTIONS — WHAT'S BUNDLED VALUE PANEL
+  // ============================================================
+  function renderBundledPanel() {
+    var ins = insuranceAnnual();
+    var rego = regoAnnual();
+    var svcShare = serviceAnnual() * (400 / 1000); // researched default: A$400 of the A$1,000 service+repairs input is "servicing"
+    var tyres = 300;
+    var roadside = 120;
+    var items = [
+      ['Comprehensive insurance', ins],
+      ['Rego + TAC', rego],
+      ['Servicing share', svcShare],
+      ['Tyres', tyres],
+      ['Roadside assist', roadside]
+    ];
+    var tbody = document.querySelector('#bundledTable tbody');
+    tbody.innerHTML = '';
+    var sum = 0;
+    items.forEach(function (it) {
+      sum += it[1];
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + it[0] + '</td><td class="num">' + fmtMoney(it[1], state.currency) + '/yr</td>';
+      tbody.appendChild(tr);
+    });
+    document.getElementById('bundledSumRow').textContent = 'Bundled value ≈ ' + fmtMoney(sum, state.currency) + '/yr ≈ ' + fmtMoney(sum / 12, state.currency) + '/mo';
+    var subM = subMonthly();
+    var vehicleOnly = subM - sum / 12;
+    document.getElementById('bundledPunchline').textContent = 'At the current subscription price of ' + fmtMoney(subM, state.currency) + '/mo, you\'re effectively paying ~' + fmtMoney(vehicleOnly, state.currency) + '/mo for the vehicle itself.';
+  }
+
+  // ============================================================
+  // TAB 4: SUBSCRIPTIONS
+  // ============================================================
+  function capUsdAud() { return 800 * FX(); }
+
+  function renderSubs() {
+    document.getElementById('capAudLabel').textContent = fmtMoney(capUsdAud(), state.currency);
+    var grid = document.getElementById('providerGrid');
+    grid.innerHTML = '';
+    var cap = capUsdAud();
+    PROVIDERS.forEach(function (p) {
+      var card = document.createElement('div');
+      card.className = 'provider-card';
+      var vehHtml = '';
+      if (p.vehicles) {
+        vehHtml = '<div class="vehicle-row">' + p.vehicles.map(function (v) {
+          var clears = v.monthly <= cap;
+          return '<div class="veh-chip"><span>' + v.name + '</span><span class="veh-price">' + fmtMoney(v.monthly, state.currency) + '/mo</span><span class="veh-clear ' + (clears ? 'yes' : 'no') + '">' + (clears ? '✓ clears cap' : '✗ over cap') + '</span></div>';
+        }).join('') + '</div>';
+        if (p.vehNote) vehHtml += '<div class="card-note" style="margin:6px 0 0;">' + p.vehNote + '</div>';
+      }
+      card.innerHTML =
+        '<div class="provider-rank">#' + p.rank + '</div>' +
+        '<div>' +
+        '<div class="provider-head"><h3>' + p.name + '</h3><span class="fit-badge ' + p.fitClass + '">' + p.fit + '</span></div>' +
+        '<div class="provider-body"><div class="full">' + p.body + '</div>' +
+        (p.caution ? '<div class="full"><b>Caution:</b> ' + p.caution + '</div>' : '') +
+        '<div class="full"><b>Unconfirmed:</b> ' + p.unconfirmed + '</div>' +
+        '<div class="full"><b>Verdict:</b> ' + p.verdict + '</div>' +
+        '</div>' + vehHtml +
+        '</div>';
+      grid.appendChild(card);
+    });
+
+    var nv = document.getElementById('notViableStrip');
+    nv.innerHTML = '';
+    NOT_VIABLE.forEach(function (n) {
+      var item = document.createElement('div');
+      item.className = 'nv-item';
+      item.innerHTML = '<b>' + n.name + '</b>' + n.body;
+      nv.appendChild(item);
+    });
+
+    var fb = document.getElementById('fallbackRow');
+    fb.innerHTML = '';
+    FALLBACKS.forEach(function (n) {
+      var item = document.createElement('div');
+      item.className = 'fb-item';
+      item.innerHTML = '<b>' + n.name + '</b>' + n.body;
+      fb.appendChild(item);
+    });
+  }
+
+  // ============================================================
+  // WIRING & MASTER RENDER
+  // ============================================================
+  function syncAssumpInputs() {
+    document.getElementById('ovPurchase').value = Math.round(purchasePrice());
+    document.getElementById('ovResale').value = Math.round(resale36Val());
+    document.getElementById('ovInsurance').value = Math.round(insuranceAnnual());
+    document.getElementById('ovService').value = Math.round(serviceAnnual());
+    document.getElementById('ovRego').value = Math.round(regoAnnual());
+    document.getElementById('ovSubMonthly').value = Math.round(subMonthly());
+    document.getElementById('ovSubUpfront').value = Math.round(subUpfront());
+    document.getElementById('ovFx').value = FX();
+    document.getElementById('ovFxVal').textContent = FX().toFixed(2);
+    var novEl = document.getElementById('ovNovatedMonthly');
+    if (novEl) novEl.value = state.overrides.novatedMonthly != null ? Math.round(state.overrides.novatedMonthly) : '';
+  }
+
+  function updateDynamicRiskSpans() {
+    var t = tier();
+    var elBudget = document.getElementById('riskBudgetUsd');
+    if (elBudget) elBudget.setAttribute('data-usd', t.usd);
+    var elSwing = document.getElementById('riskFxSwingSpan');
+    if (elSwing) elSwing.setAttribute('data-usd', t.usd * 0.05);
+    var elSubMonths = document.getElementById('riskSubMonths');
+    if (elSubMonths) elSubMonths.textContent = state.duration;
+    var elSubSpend = document.getElementById('riskSubSpend');
+    if (elSubSpend) elSubSpend.setAttribute('data-aud', subNetCost(state.duration));
+  }
+
+  function updateBudgetStrip() {
+    var t = tier();
+    var audConverted = t.usd * FX();
+    document.getElementById('budgetStripLine').textContent = 'US$' + Math.round(t.usd).toLocaleString('en-US') + ' → AU$' + Math.round(audConverted).toLocaleString('en-US') + ' at rate ' + FX().toFixed(2);
+    var previewEl = document.getElementById('customAudPreview');
+    if (previewEl) previewEl.textContent = state.tierId === 'custom' ? ('A$' + Math.round(audConverted).toLocaleString('en-US')) : 'set below';
+    document.getElementById('gaugeCustomRow').classList.toggle('hidden', state.tierId !== 'custom');
+    updateGaugeAudPreviews();
+  }
+
+  function updateGaugeAudPreviews() {
+    var fx = FX();
+    var fixedIds = { t10: 'gaugeAud_t10', t12_5: 'gaugeAud_t12_5', t15: 'gaugeAud_t15' };
+    for (var id in fixedIds) {
+      if (!fixedIds.hasOwnProperty(id)) continue;
+      var el = document.getElementById(fixedIds[id]);
+      if (el) el.textContent = 'A$' + Math.round(TIERS[id].usd * fx).toLocaleString('en-US');
+    }
+  }
+
+  // ============================================================
+  // LIVE FX RATE (best-effort, non-blocking)
+  // ============================================================
+  function updateRateBanner() {
+    var span = document.getElementById('planningRateSpan');
+    if (span) {
+      var fx = DEFAULTS.fx;
+      span.innerHTML = '<strong>Planning rate: 1 USD = ' + fx.toFixed(2) + ' AUD</strong> (1 AUD ≈ US$' + (1 / fx).toFixed(2) + ')';
+    }
+    var note = document.getElementById('fxLiveNote');
+    if (!note) return;
+    if (state.fxLive.success) {
+      note.textContent = 'live rate: 1 USD = A$' + state.fxLive.rate.toFixed(2);
+    } else if (state.fxLive.attempted) {
+      note.textContent = state.fxTouched
+        ? 'using your custom FX rate'
+        : 'planning rate ' + DEFAULTS.fx.toFixed(2) + ' (live fetch unavailable)';
+    } else {
+      note.textContent = '';
+    }
+  }
+
+  function fetchLiveFx() {
+    try {
+      if (typeof fetch !== 'function' || typeof AbortController !== 'function') return;
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function () { controller.abort(); }, 3000);
+      fetch('https://open.er-api.com/v6/latest/USD', { signal: controller.signal })
+        .then(function (resp) {
+          clearTimeout(timeoutId);
+          if (!resp || !resp.ok) throw new Error('FX fetch: unexpected response status');
+          return resp.json();
+        })
+        .then(function (data) {
+          state.fxLive.attempted = true;
+          var rate = data && data.rates ? data.rates.AUD : null;
+          if (typeof rate === 'number' && isFinite(rate) && rate > 0) {
+            if (!state.fxTouched) {
+              state.fxLive.success = true;
+              state.fxLive.rate = rate;
+              DEFAULTS.fx = rate;
+              render();
+            }
+          }
+          updateRateBanner();
+        })
+        .catch(function () {
+          clearTimeout(timeoutId);
+          state.fxLive.attempted = true;
+          updateRateBanner();
+        });
+    } catch (err) {
+      state.fxLive.attempted = true;
+      updateRateBanner();
+    }
+  }
+
+  // ============================================================
+  // EDITABLE TITLE — #title= hash support (no storage APIs)
+  // ============================================================
+  function applyHashTitle() {
+    try {
+      var hash = window.location.hash || '';
+      if (hash.length > 7 && hash.slice(0, 7) === '#title=') {
+        var decoded = decodeURIComponent(hash.slice(7)).trim();
+        if (decoded) {
+          var h1 = document.getElementById('mainTitle');
+          if (h1) h1.textContent = decoded;
+        }
+      }
+    } catch (err) { /* malformed hash — ignore, keep default title */ }
+  }
+
+  function syncFilterInputs() {
+    var el = document.getElementById('filterMaxPrice');
+    el.value = state.filters.maxPrice != null ? state.filters.maxPrice : '';
+    el.placeholder = 'blank = no cap (links use ' + Math.round(currentCapAud()).toLocaleString('en-US') + ')';
+  }
+
+  // ============================================================
+  // ADDED 27 Jul 2026: COLLAPSIBLE STICKY CONTROLS — preserve
+  // Auto-collapses the header/controls/assumptions block into a slim summary bar once the
+  // user scrolls past it, so it stops dominating the viewport. Same DOM nodes throughout —
+  // #controlsFull is only ever repositioned via CSS classes, never cloned, so every existing
+  // id and event listener on its children keeps working unchanged.
+  // ============================================================
+  var controlsCollapsed = false;
+  var controlsOverlayOpen = false;
+  var COLLAPSE_AT = 60;  // px scrolled — collapse once past this (lowered from 150 on 2 Sep 2026: the expanded bar was 474px of a 900px viewport)
+  var EXPAND_AT = 16;    // px scrolled — restore full layout once back under this (hysteresis gap avoids flicker)
+  var manualCollapsed = false; // ADDED 2 Sep 2026: user pinned the header shut regardless of scroll position
+
+  function isStickyBreakpoint() {
+    return window.matchMedia('(min-width: 741px)').matches;
+  }
+
+  function fmtKUsd(usd) {
+    var k = Math.round((usd / 1000) * 10) / 10;
+    return 'US$' + k + 'k';
+  }
+
+  function updateControlsSummary() {
+    var el = document.getElementById('controlsSlimSummary');
+    if (!el) return;
+    var t = tier();
+    var budgetTxt = state.tierId === 'custom' ? fmtKUsd(state.customUsd || 12500) : fmtKUsd(t.usd);
+    el.innerHTML = '<strong>' + budgetTxt + '</strong> · ' + state.duration + ' mo · FX ' + FX().toFixed(2) + ' · ' + state.currency;
+  }
+
+  function setOverlayOpen(open) {
+    controlsOverlayOpen = !!open && controlsCollapsed;
+    var bar = document.querySelector('.sticky-bar');
+    if (bar) bar.classList.toggle('overlay-open', controlsOverlayOpen);
+    var btn = document.getElementById('slimEditBtn');
+    if (btn) {
+      btn.textContent = controlsOverlayOpen ? '✕ Close' : '⚙ Edit';
+      btn.classList.toggle('active', controlsOverlayOpen);
+      btn.setAttribute('aria-expanded', controlsOverlayOpen ? 'true' : 'false');
+    }
+  }
+
+  function setControlsCollapsed(collapsed) {
+    if (collapsed === controlsCollapsed) return; // no-op guard — avoids redundant reflow/thrash
+    controlsCollapsed = collapsed;
+    var bar = document.querySelector('.sticky-bar');
+    if (bar) bar.classList.toggle('collapsed', controlsCollapsed);
+    // Any transition into/out of the collapsed state starts with the edit overlay closed.
+    setOverlayOpen(false);
+  }
+
+  function evaluateScrollCollapse() {
+    if (!isStickyBreakpoint()) {
+      // Mobile: the sticky bar is position:static (see the ≤740px media query) — nothing to collapse.
+      if (controlsCollapsed) setControlsCollapsed(false);
+      return;
+    }
+    var y = window.scrollY || document.documentElement.scrollTop || 0;
+    // ADDED 2 Sep 2026: a manual collapse wins over the scroll thresholds until the user expands again.
+    if (manualCollapsed) { if (!controlsCollapsed) setControlsCollapsed(true); return; }
+    if (!controlsCollapsed && y > COLLAPSE_AT) setControlsCollapsed(true);
+    else if (controlsCollapsed && y < EXPAND_AT) setControlsCollapsed(false);
+  }
+
+  var scrollTicking = false;
+  window.addEventListener('scroll', function () {
+    if (scrollTicking) return;
+    scrollTicking = true;
+    window.requestAnimationFrame(function () {
+      evaluateScrollCollapse();
+      scrollTicking = false;
+    });
+  }, { passive: true });
+
+  window.addEventListener('resize', function () {
+    evaluateScrollCollapse();
+  });
+
+  // ADDED 2 Sep 2026: manual collapse / expand controls — preserve
+  var collapseNowBtnEl = document.getElementById('collapseNowBtn');
+  if (collapseNowBtnEl) {
+    collapseNowBtnEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (!isStickyBreakpoint()) return; // below 741px the bar is position:static — nothing to collapse
+      manualCollapsed = true;
+      setControlsCollapsed(true);
+    });
+  }
+  var slimExpandBtnEl = document.getElementById('slimExpandBtn');
+  if (slimExpandBtnEl) {
+    slimExpandBtnEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      manualCollapsed = false;
+      setControlsCollapsed(false);
+      evaluateScrollCollapse(); // re-collapses immediately if we are still scrolled past COLLAPSE_AT
+    });
+  }
+
+  var slimEditBtnEl = document.getElementById('slimEditBtn');
+  if (slimEditBtnEl) {
+    slimEditBtnEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setOverlayOpen(!controlsOverlayOpen);
+    });
+  }
+
+  // click-outside closes the overlay dropdown without affecting the collapsed/expanded state
+  document.addEventListener('click', function (e) {
+    if (!controlsCollapsed || !controlsOverlayOpen) return;
+    var target = e.target;
+    var inOverlay = target.closest && (target.closest('#controlsFull') || target.closest('#slimEditBtn'));
+    if (!inOverlay) setOverlayOpen(false);
+  });
+
+  function render() {
+    document.getElementById('durationValue').textContent = state.duration + ' months (' + (state.duration / 12).toFixed(1) + ' yrs)';
+    document.getElementById('gaugeTierLabel').textContent = tier().label;
+    applyFreshness(); // ADDED 2 Sep 2026 — replaces the static snapshot line with an aging read-out
+    updateBudgetStrip();
+    updateDynamicRiskSpans();
+    updateRateBanner();
+    updateControlsSummary();
+    updateMoneySpans();
+    updateStatTiles();
+    renderChart();
+    renderChartTable();
+    renderStacks();
+    renderInclusions();
+    renderCars();
+    renderBundledPanel();
+    renderSubs();
+    syncAssumpInputs();
+    syncFilterInputs();
+  }
+
+  // duration slider + quick buttons
+  document.getElementById('durationSlider').addEventListener('input', function (e) {
+    state.duration = parseInt(e.target.value, 10);
+    document.querySelectorAll('#quickDurations button').forEach(function (b) { b.classList.toggle('active', parseInt(b.getAttribute('data-t'), 10) === state.duration); });
+    render();
+  });
+  document.querySelectorAll('#quickDurations button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.duration = parseInt(b.getAttribute('data-t'), 10);
+      document.getElementById('durationSlider').value = state.duration;
+      document.querySelectorAll('#quickDurations button').forEach(function (x) { x.classList.remove('active'); });
+      b.classList.add('active');
+      render();
+    });
+  });
+
+  // currency toggle
+  var curButtons = document.querySelectorAll('#currencyToggle button');
+  curButtons.forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      state.currency = e.currentTarget.getAttribute('data-cur');
+      curButtons.forEach(function (b) { b.classList.remove('active'); });
+      e.currentTarget.classList.add('active');
+      render();
+    });
+  });
+
+  // budget gauge
+  document.querySelectorAll('#budgetGauge button').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      state.tierId = e.currentTarget.getAttribute('data-tier');
+      document.querySelectorAll('#budgetGauge button').forEach(function (b) { b.classList.remove('active'); });
+      e.currentTarget.classList.add('active');
+      // switching tier resets only the tier-linked overrides (purchase/resale), keeps other overrides
+      state.overrides.purchase = null;
+      state.overrides.resale36 = null;
+      render();
+    });
+  });
+
+  // custom budget input
+  document.getElementById('customUsdInput').addEventListener('input', function (e) {
+    var v = parseFloat(e.target.value);
+    state.customUsd = isNaN(v) ? 12500 : v;
+    if (state.tierId !== 'custom') {
+      state.tierId = 'custom';
+      document.querySelectorAll('#budgetGauge button').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tier') === 'custom'); });
+    }
+    state.overrides.purchase = null;
+    state.overrides.resale36 = null;
+    render();
+  });
+
+  // cars tab: filter bar
+  document.getElementById('filterBrand').addEventListener('change', function (e) {
+    state.filters.brand = e.target.value;
+    renderCars();
+  });
+  document.getElementById('filterBody').addEventListener('change', function (e) {
+    state.filters.body = e.target.value;
+    renderCars();
+  });
+  document.getElementById('filterMaxPrice').addEventListener('input', function (e) {
+    var v = parseFloat(e.target.value);
+    state.filters.maxPrice = isNaN(v) ? null : Math.round(v);
+    renderCars();
+  });
+  document.getElementById('filterMaxKm').addEventListener('change', function (e) {
+    state.filters.maxKm = e.target.value;
+    renderCars();
+  });
+  document.getElementById('filterYear').addEventListener('change', function (e) {
+    state.filters.yearMin = parseInt(e.target.value, 10);
+    renderCars();
+  });
+
+  // tab nav
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () { switchTab(btn.getAttribute('data-tab')); });
+  });
+
+  // table view toggle
+  document.getElementById('toggleTableBtn').addEventListener('click', function () {
+    var tableWrap = document.getElementById('chartTableWrap');
+    var svgShell = document.querySelector('.chart-shell');
+    var legend = document.getElementById('chartLegend');
+    if (tableWrap.classList.contains('hidden')) {
+      tableWrap.classList.remove('hidden');
+      svgShell.classList.add('hidden');
+      legend.classList.add('hidden');
+      this.textContent = 'View as chart';
+    } else {
+      tableWrap.classList.add('hidden');
+      svgShell.classList.remove('hidden');
+      legend.classList.remove('hidden');
+      this.textContent = 'View as table';
+    }
+  });
+
+  // show all tiers checkbox
+  document.getElementById('showAllTiersChk').addEventListener('change', function (e) {
+    state.showAllTiers = e.target.checked;
+    renderChart();
+    renderChartTable();
+  });
+
+  // assumptions panel toggle
+  document.getElementById('assumpToggleBtn').addEventListener('click', function () {
+    var panel = document.getElementById('assumpPanel');
+    var collapsed = panel.classList.toggle('hidden');
+    this.textContent = collapsed ? 'Adjust assumptions ▾' : 'Adjust assumptions ▴';
+  });
+
+  // assumptions inputs
+  function bindNumberOverride(id, key) {
+    document.getElementById(id).addEventListener('change', function (e) {
+      var v = parseFloat(e.target.value);
+      state.overrides[key] = isNaN(v) ? null : v;
+      render();
+    });
+  }
+  bindNumberOverride('ovPurchase', 'purchase');
+  bindNumberOverride('ovResale', 'resale36');
+  bindNumberOverride('ovInsurance', 'insurance');
+  bindNumberOverride('ovService', 'service');
+  bindNumberOverride('ovRego', 'rego');
+  bindNumberOverride('ovSubMonthly', 'subMonthly');
+  bindNumberOverride('ovSubUpfront', 'subUpfront');
+  bindNumberOverride('ovNovatedMonthly', 'novatedMonthly');
+  document.getElementById('ovFx').addEventListener('input', function (e) {
+    state.fxTouched = true;
+    state.overrides.fx = parseFloat(e.target.value);
+    document.getElementById('ovFxVal').textContent = state.overrides.fx.toFixed(2);
+    render();
+  });
+
+  // reset link
+  document.getElementById('resetAssumpBtn').addEventListener('click', function () {
+    state.overrides = { purchase: null, resale36: null, insurance: null, service: null, rego: null, subMonthly: null, subUpfront: null, fx: null, novatedMonthly: null };
+    render();
+  });
+
+  // re-tune the chart viewBox on viewport/orientation changes (e.g. rotating a phone)
+  var chartResizeTimer = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(chartResizeTimer);
+    chartResizeTimer = setTimeout(function () {
+      if (state.activeTab === 'compare') renderChart();
+    }, 150);
+  });
+
+  applyHashTitle();
+  renderBrands();
+  render();
+  fetchLiveFx();
+  evaluateScrollCollapse();
+})();
+</script>
+</body>
+</html>
